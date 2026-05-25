@@ -21,7 +21,7 @@ export function MeshBackground() {
         fit="cover"
       />
       {/* Lighten and soften the gradient so cards and text remain readable */}
-      <div className="absolute inset-0 bg-white/45 backdrop-blur-[1px]" />
+      <div className="absolute inset-0 bg-white/51 backdrop-blur-[1px]" />
     </div>
   );
 }
