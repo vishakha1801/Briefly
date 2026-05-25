@@ -53,6 +53,8 @@ Open http://localhost:3000.
 
 Add `OPENAI_API_KEY` to `.env.local` for live Realtime voice and audio transcription. Without a key, the app still supports the product flow through local demo behavior, mocked backend routes, and the text command bar.
 
+Briefly is optimized and tested primarily on Chrome and Safari. Firefox should support the core product flow and may work for voice as well, but it has not been tested as heavily. Because browser voice APIs, microphone permissions, and autoplay policies vary, Chrome or Safari are recommended for the smoothest live voice experience.
+
 
 ## Core Flow
 1. Select a seeded customer from the context dropdown, or create a new customer.

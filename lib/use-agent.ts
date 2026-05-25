@@ -263,9 +263,17 @@ export function useAgent(sessionId: string) {
   const resumeHandsFreeRef = useRef<() => void>(() => {});
   const sendRepRef = useRef<(text: string) => void>(() => {});
   const dealBriefRef = useRef<() => void>(() => {});
-  // Per-response speech output state. wasInterrupted is set on barge-in and
-  // cleared when the NEXT response starts so it only suppresses the interrupted one.
-  const voiceOutputRef = useRef({ wasInterrupted: false, fallbackTimer: null as number | null });
+  // Speech output manager — all fields are per-response and reset in onActivity("responding").
+  // responseId is a monotone counter; closures capture it so stale timers self-abort.
+  const voiceOutputRef = useRef({
+    responseId: 0,
+    wasInterrupted: false,
+    isSpeaking: false,
+    realtimeAudioStarted: false,
+    fallbackTTSUsed: false,
+    shouldSpeakResponse: false,
+    fallbackTimer: null as number | null,
+  });
   const status = useAgentStore((s) => s.status);
   const qc = useQueryClient();
 
@@ -659,26 +667,29 @@ export function useAgent(sessionId: string) {
   /** Barge-in: stop the agent mid-sentence so the rep can take over. */
   const interrupt = useCallback(() => {
     const store = useAgentStore.getState();
-    // Mark current response as interrupted so any late onAgentText/TTS is suppressed.
+    // Mark response-scoped interruption so late onAgentText/TTS are suppressed.
     voiceOutputRef.current.wasInterrupted = true;
+    voiceOutputRef.current.isSpeaking = false;
+    // Cancel per-response TTS fallback timer.
     if (voiceOutputRef.current.fallbackTimer !== null) {
       window.clearTimeout(voiceOutputRef.current.fallbackTimer);
       voiceOutputRef.current.fallbackTimer = null;
     }
-    // Stop realtime WebRTC audio + cancel the server response
+    // Cancel tool-call final-answer timer (prevents stale canned text from firing).
+    clearRealtimeFallback();
+    // Stop WebRTC audio + cancel server response.
     if (sessionRef.current && store.mode === "realtime") {
       sessionRef.current.interrupt();
     }
-    // Stop browser TTS (simulation mode or text-only fallback)
+    // Stop browser TTS (simulation or TTS-fallback path).
     if (typeof window !== "undefined") {
       window.speechSynthesis?.cancel();
       const el = document.getElementById("briefly-agent-audio") as HTMLAudioElement | null;
       if (el) { el.pause(); el.currentTime = el.duration || 0; }
     }
     store.setActivity("idle");
-    // In hands-free mode, resume listening immediately after interruption
     resumeHandsFreeRef.current();
-  }, []);
+  }, [clearRealtimeFallback]);
 
   /** A short faux amplitude burst so the orb feels alive on a demo-mode send. */
   const demoPulse = useCallback(() => {
@@ -982,12 +993,21 @@ export function useAgent(sessionId: string) {
           },
           onActivity: (a) => {
             if (a === "responding") {
-              // Clear the interrupt flag from the previous response before the new one starts.
-              voiceOutputRef.current.wasInterrupted = false;
+              // Cancel any stale speech from the previous response before resetting.
               if (voiceOutputRef.current.fallbackTimer !== null) {
                 window.clearTimeout(voiceOutputRef.current.fallbackTimer);
                 voiceOutputRef.current.fallbackTimer = null;
               }
+              if (voiceOutputRef.current.isSpeaking) {
+                window.speechSynthesis?.cancel();
+                voiceOutputRef.current.isSpeaking = false;
+              }
+              // Increment responseId so any in-flight timer closures self-abort.
+              voiceOutputRef.current.responseId++;
+              voiceOutputRef.current.wasInterrupted = false;
+              voiceOutputRef.current.realtimeAudioStarted = false;
+              voiceOutputRef.current.fallbackTTSUsed = false;
+              voiceOutputRef.current.shouldSpeakResponse = true;
             }
             useAgentStore.getState().setActivity(a);
           },
@@ -1006,63 +1026,81 @@ export function useAgent(sessionId: string) {
               realtimeFinalAnswerRef.current = true;
               return;
             }
-            // Skip text/TTS for a response the user already interrupted.
             if (voiceOutputRef.current.wasInterrupted) return;
             clearRealtimeFallback();
             realtimeFinalAnswerRef.current = true;
             useAgentStore.getState().addAgentTurn(t);
-            if (!hasAudio) {
-              // hasAudio=false: audio not yet confirmed (onplaying hasn't fired) or
-              // missing entirely. Schedule TTS fallback; onAudioProgress cancels it
-              // if WebRTC audio starts before the timer fires.
-              const timer = window.setTimeout(() => {
-                voiceOutputRef.current.fallbackTimer = null;
-                if (voiceOutputRef.current.wasInterrupted) return;
-                void speakTTS(t).then(() => {
+            if (!voiceOutputRef.current.shouldSpeakResponse) return;
+            if (hasAudio) {
+              // Output path locked: realtime-audio. onAudioDone handles hands-free resume.
+              return;
+            }
+            // Audio not confirmed yet. Schedule TTS fallback; onAudioProgress cancels it
+            // if WebRTC audio arrives in time. responseId guards against stale timers.
+            const capturedId = voiceOutputRef.current.responseId;
+            const timer = window.setTimeout(() => {
+              voiceOutputRef.current.fallbackTimer = null;
+              if (voiceOutputRef.current.responseId !== capturedId) return; // new response started
+              if (voiceOutputRef.current.wasInterrupted) return;
+              if (voiceOutputRef.current.realtimeAudioStarted) return; // audio arrived late
+              if (voiceOutputRef.current.fallbackTTSUsed) return; // already speaking
+              // Lock to browser-tts path.
+              voiceOutputRef.current.fallbackTTSUsed = true;
+              voiceOutputRef.current.isSpeaking = true;
+              void speakTTS(t).then(() => {
+                voiceOutputRef.current.isSpeaking = false;
+                if (voiceOutputRef.current.responseId === capturedId && !voiceOutputRef.current.wasInterrupted) {
                   useAgentStore.getState().setActivity("idle");
                   resumeHandsFreeRef.current();
-                });
-              }, 500);
-              voiceOutputRef.current.fallbackTimer = timer;
-            }
-            // hasAudio=true: WebRTC audio is confirmed playing; onAudioDone handles resume.
+                }
+              });
+            }, 500);
+            voiceOutputRef.current.fallbackTimer = timer;
           },
           onAudioProgress: () => {
-            // WebRTC audio confirmed for this response — cancel the TTS fallback.
+            // Lock to realtime-audio path.
+            voiceOutputRef.current.realtimeAudioStarted = true;
+            // Cancel pending TTS fallback — audio confirmed.
             if (voiceOutputRef.current.fallbackTimer !== null) {
               window.clearTimeout(voiceOutputRef.current.fallbackTimer);
               voiceOutputRef.current.fallbackTimer = null;
             }
+            // If TTS already started (race: 500ms elapsed before audio arrived), stop it.
+            if (voiceOutputRef.current.isSpeaking) {
+              window.speechSynthesis?.cancel();
+              voiceOutputRef.current.isSpeaking = false;
+              voiceOutputRef.current.fallbackTTSUsed = false;
+            }
           },
           onAudioDone: () => {
             clearRealtimeFallback();
-            const store = useAgentStore.getState();
-            store.setActivity("idle");
-            resumeHandsFreeRef.current();
+            if (!voiceOutputRef.current.wasInterrupted) {
+              useAgentStore.getState().setActivity("idle");
+              resumeHandsFreeRef.current();
+            }
           },
           onTool: async (name, args) => {
             clearRealtimeFallback();
             const { result } = await runTool(name, args);
             const fallback = finalResponseForTool(name, result, args);
             realtimeFallbackTimerRef.current = window.setTimeout(() => {
-              if (realtimeFinalAnswerRef.current) {
-                realtimeFallbackTimerRef.current = null;
-                return;
-              }
+              realtimeFallbackTimerRef.current = null;
+              if (realtimeFinalAnswerRef.current) return;      // model answered verbally
+              if (voiceOutputRef.current.wasInterrupted) return;  // user barged in
+              if (sessionRef.current?.audioPlayable) return;   // audio still playing
+              // Model went silent — show canned fallback text and optionally speak it.
               const store = useAgentStore.getState();
               store.setActivity("responding");
               store.addAgentTurn(fallback);
-              // If Realtime didn't speak the tool result, use TTS as fallback.
-              if (!sessionRef.current?.audioPlayable) {
-                void speakTTS(fallback).then(() => {
-                  useAgentStore.getState().setActivity("idle");
-                  resumeHandsFreeRef.current();
-                });
-              } else {
+              if (!voiceOutputRef.current.shouldSpeakResponse) {
                 store.setActivity("idle");
                 resumeHandsFreeRef.current();
+                return;
               }
-              realtimeFallbackTimerRef.current = null;
+              void speakTTS(fallback).then(() => {
+                useAgentStore.getState().setActivity("idle");
+                resumeHandsFreeRef.current();
+              });
             }, FINAL_FALLBACK_DELAY);
             return result;
           },
@@ -1428,6 +1466,12 @@ export function useAgent(sessionId: string) {
 
   const end = useCallback(() => {
     clearRealtimeFallback();
+    if (voiceOutputRef.current.fallbackTimer !== null) {
+      window.clearTimeout(voiceOutputRef.current.fallbackTimer);
+      voiceOutputRef.current.fallbackTimer = null;
+    }
+    window.speechSynthesis?.cancel();
+    voiceOutputRef.current.isSpeaking = false;
     if (pttRealtimeMuteTimerRef.current) {
       window.clearTimeout(pttRealtimeMuteTimerRef.current);
       pttRealtimeMuteTimerRef.current = null;
@@ -1442,6 +1486,12 @@ export function useAgent(sessionId: string) {
   useEffect(
     () => () => {
       clearRealtimeFallback();
+      if (voiceOutputRef.current.fallbackTimer !== null) {
+        window.clearTimeout(voiceOutputRef.current.fallbackTimer);
+        voiceOutputRef.current.fallbackTimer = null;
+      }
+      window.speechSynthesis?.cancel();
+      voiceOutputRef.current.isSpeaking = false;
       if (pttRealtimeMuteTimerRef.current) {
         window.clearTimeout(pttRealtimeMuteTimerRef.current);
         pttRealtimeMuteTimerRef.current = null;
