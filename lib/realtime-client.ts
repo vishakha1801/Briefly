@@ -58,6 +58,12 @@ export interface RealtimeCallbacks {
    * Use this — not a text-length timer — to resume hands-free listening.
    */
   onAudioDone?: () => void;
+  /**
+   * Fired the first time the remote audio element emits playback for a given
+   * response. Use this to cancel any TTS fallback timer that was started when
+   * onAgentText fired with hasAudio=false (audio not yet confirmed at that point).
+   */
+  onAudioProgress?: () => void;
 }
 
 // Explicitly request audio on every response.create. gpt-realtime-2 accepts
@@ -319,8 +325,21 @@ export class RealtimeSession {
       el.autoplay = true;
       el.setAttribute("playsinline", "true");
       const markPlayable = () => {
+        const firstProgress = !this.remoteAudioProgressed;
         this.realtimeAudioPlayable = true;
         this.remoteAudioProgressed = true;
+        if (firstProgress) {
+          this.cb.onAudioProgress?.();
+          // Handle the race where audio starts AFTER response.done fired without
+          // seeing remoteAudioProgressed — schedule audioDoneTimer retroactively.
+          if (!this.responseInProgress && this.currentResponseHasAudio && !this.audioDoneTimer) {
+            this.audioDoneTimer = window.setTimeout(() => {
+              this.audioDoneTimer = null;
+              this.cb.onActivity?.("idle");
+              this.cb.onAudioDone?.();
+            }, 600);
+          }
+        }
       };
       el.onplaying = markPlayable;
       el.ontimeupdate = markPlayable;
@@ -502,6 +521,9 @@ export class RealtimeSession {
         this.currentResponseHasAudio = false;
         this.currentResponseTextSent = false;
         this.remoteAudioProgressed = false;
+        // Reset per-response so stale "playable" state from a prior response
+        // doesn't cause the TTS fallback to be skipped for the new response.
+        this.realtimeAudioPlayable = false;
         if (this.audioDoneTimer) {
           window.clearTimeout(this.audioDoneTimer);
           this.audioDoneTimer = null;

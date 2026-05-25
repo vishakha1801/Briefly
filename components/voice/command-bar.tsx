@@ -228,7 +228,7 @@ export function CommandBar({
           <TooltipContent>Start voice input</TooltipContent>
         </Tooltip>
 
-        <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2 !h-10")}>
+        <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2")}>
           {(["ptt", "continuous"] as const).map((m) => (
             <Tooltip key={m}>
               <TooltipTrigger asChild>

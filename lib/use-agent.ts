@@ -263,6 +263,9 @@ export function useAgent(sessionId: string) {
   const resumeHandsFreeRef = useRef<() => void>(() => {});
   const sendRepRef = useRef<(text: string) => void>(() => {});
   const dealBriefRef = useRef<() => void>(() => {});
+  // Per-response speech output state. wasInterrupted is set on barge-in and
+  // cleared when the NEXT response starts so it only suppresses the interrupted one.
+  const voiceOutputRef = useRef({ wasInterrupted: false, fallbackTimer: null as number | null });
   const status = useAgentStore((s) => s.status);
   const qc = useQueryClient();
 
@@ -656,6 +659,12 @@ export function useAgent(sessionId: string) {
   /** Barge-in: stop the agent mid-sentence so the rep can take over. */
   const interrupt = useCallback(() => {
     const store = useAgentStore.getState();
+    // Mark current response as interrupted so any late onAgentText/TTS is suppressed.
+    voiceOutputRef.current.wasInterrupted = true;
+    if (voiceOutputRef.current.fallbackTimer !== null) {
+      window.clearTimeout(voiceOutputRef.current.fallbackTimer);
+      voiceOutputRef.current.fallbackTimer = null;
+    }
     // Stop realtime WebRTC audio + cancel the server response
     if (sessionRef.current && store.mode === "realtime") {
       sessionRef.current.interrupt();
@@ -971,7 +980,17 @@ export function useAgent(sessionId: string) {
           onStatus: (s) => {
             if (s === "error") toast.error("Realtime connection error");
           },
-          onActivity: (a) => useAgentStore.getState().setActivity(a),
+          onActivity: (a) => {
+            if (a === "responding") {
+              // Clear the interrupt flag from the previous response before the new one starts.
+              voiceOutputRef.current.wasInterrupted = false;
+              if (voiceOutputRef.current.fallbackTimer !== null) {
+                window.clearTimeout(voiceOutputRef.current.fallbackTimer);
+                voiceOutputRef.current.fallbackTimer = null;
+              }
+            }
+            useAgentStore.getState().setActivity(a);
+          },
           onLevel: (lvl) => useAgentStore.getState().setMicLevel(lvl),
           onServerError: (m) =>
             toast.error("Voice error", { description: m }),
@@ -987,21 +1006,33 @@ export function useAgent(sessionId: string) {
               realtimeFinalAnswerRef.current = true;
               return;
             }
+            // Skip text/TTS for a response the user already interrupted.
+            if (voiceOutputRef.current.wasInterrupted) return;
             clearRealtimeFallback();
             realtimeFinalAnswerRef.current = true;
             useAgentStore.getState().addAgentTurn(t);
             if (!hasAudio) {
-              // hasAudio=false means either no audio from the server OR the browser
-              // audio element failed to start (autoplay blocked). Fall back to TTS.
-              window.setTimeout(() => {
-                if (sessionRef.current?.audioPlayable) return;
+              // hasAudio=false: audio not yet confirmed (onplaying hasn't fired) or
+              // missing entirely. Schedule TTS fallback; onAudioProgress cancels it
+              // if WebRTC audio starts before the timer fires.
+              const timer = window.setTimeout(() => {
+                voiceOutputRef.current.fallbackTimer = null;
+                if (voiceOutputRef.current.wasInterrupted) return;
                 void speakTTS(t).then(() => {
                   useAgentStore.getState().setActivity("idle");
                   resumeHandsFreeRef.current();
                 });
-              }, 350);
+              }, 500);
+              voiceOutputRef.current.fallbackTimer = timer;
             }
             // hasAudio=true: WebRTC audio is confirmed playing; onAudioDone handles resume.
+          },
+          onAudioProgress: () => {
+            // WebRTC audio confirmed for this response — cancel the TTS fallback.
+            if (voiceOutputRef.current.fallbackTimer !== null) {
+              window.clearTimeout(voiceOutputRef.current.fallbackTimer);
+              voiceOutputRef.current.fallbackTimer = null;
+            }
           },
           onAudioDone: () => {
             clearRealtimeFallback();
