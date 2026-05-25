@@ -6,8 +6,8 @@ import {
   CheckIcon,
   CheckSquareIcon,
   Loader2Icon,
-  MicIcon,
   PencilIcon,
+  SparklesIcon,
   TargetIcon,
   XIcon,
 } from "lucide-react";
@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ui/conversation";
 import { Message, MessageContent } from "@/components/ui/message";
@@ -36,6 +35,7 @@ export function LiveTranscript({
   const dealBrief = useAgentStore((s) => s.dealBrief);
   const dealBriefAt = useAgentStore((s) => s.dealBriefAt);
   const briefLoading = useAgentStore((s) => s.briefLoading);
+  const selectedCustomerId = useAgentStore((s) => s.selectedCustomerId);
   const timeline = [
     ...transcript.map((turn) => ({
       type: "turn" as const,
@@ -48,14 +48,19 @@ export function LiveTranscript({
   return (
     <Conversation className="h-full overflow-hidden" initial="smooth" resize="smooth">
       <ConversationContent className="space-y-1 overflow-hidden px-3 py-2 pr-5 sm:px-4 sm:pr-6">
-        {/* Empty state only when there's nothing to show at all */}
-        {transcript.length === 0 && !dealBrief && !briefLoading && !live && (
-          <ConversationEmptyState
-            className="h-full"
-            icon={<MicIcon className="size-7 text-muted-foreground/30" />}
-            title="No transcript yet"
-            description="Import a transcript to create a grounded brief."
-          />
+        {/* Empty state: no customer selected and nothing to show yet */}
+        {!selectedCustomerId && transcript.length === 0 && !dealBrief && !briefLoading && (
+          <div className="flex h-full flex-col items-center justify-center gap-2.5 p-8 text-center">
+            <SparklesIcon className="size-4 text-muted-foreground/25" />
+            <div className="max-w-[210px] space-y-1.5">
+              <p className="text-[13px] leading-snug text-muted-foreground/60">
+                Select a customer or create one to get started.
+              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground/40">
+                Then add a call recap to generate notes, tasks, and talking points.
+              </p>
+            </div>
+          </div>
         )}
 
         {timeline.map((item) =>
