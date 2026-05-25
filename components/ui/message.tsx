@@ -41,7 +41,7 @@ const messageContentVariants = cva(
         variant: "contained",
         from: "user",
         className:
-          "rounded-xl border-0 bg-[#4F5BF0] text-white/95",
+          "rounded-xl border-0 bg-brand text-white/95",
       },
       {
         variant: "contained",

@@ -866,6 +866,44 @@ export function useAgent(sessionId: string) {
     };
   }, [startHandsFreeRecognition]);
 
+  // Refresh Realtime session instructions + inject a context message whenever
+  // the selected customer changes mid-session. Without this, the model keeps
+  // using the customerId that was baked in at connect time.
+  const selectedCustomerId = useAgentStore((s) => s.selectedCustomerId);
+  useEffect(() => {
+    const store = useAgentStore.getState();
+    if (store.status !== "live" || store.mode !== "realtime") return;
+    const session = sessionRef.current;
+    if (!session) return;
+
+    void (async () => {
+      let customer: Customer | null = null;
+      let callContexts: CallContext[] = [];
+      if (selectedCustomerId) {
+        [customer, callContexts] = await Promise.all([
+          api.getCustomer(selectedCustomerId).catch(() => null),
+          api.getCallContexts(selectedCustomerId).catch(() => []),
+        ]);
+      }
+
+      // Update the session system prompt so future tool calls use the right customerId.
+      session.updateInstructions(buildInstructions(customer, callContexts));
+
+      // Also inject a conversation-level system message so the model's context
+      // window reflects the switch even for already-in-flight turns.
+      const contextMsg = customer
+        ? `Customer context updated: You are now assisting with ${customer.name} at ` +
+          `${customer.company} (customerId: "${customer.id}", stage: ${customer.stage}). ` +
+          `For all tool calls that require a customerId, use "${customer.id}". ` +
+          `Questions about "the customer" or "what do we know" now refer to ${customer.name}.`
+        : `Customer context updated: No customer is currently selected. ` +
+          `Use search_customer to find a customer before any customer-specific actions.`;
+
+      session.injectContext(contextMsg);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomerId]);
+
   const activity = useAgentStore((s) => s.activity);
   const handsFree = useAgentStore((s) => s.handsFree);
   const voiceMode = useAgentStore((s) => s.voiceMode);

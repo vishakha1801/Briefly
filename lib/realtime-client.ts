@@ -451,6 +451,23 @@ export class RealtimeSession {
     });
   }
 
+  /**
+   * Re-send session.update with new instructions. Use this when the selected
+   * customer changes mid-session so the model's system prompt stays current.
+   * Does nothing if the data channel is not yet open.
+   */
+  updateInstructions(newInstructions: string) {
+    this.instructions = newInstructions;
+    this.send({
+      type: "session.update",
+      session: {
+        type: "realtime",
+        model: this.model,
+        instructions: newInstructions,
+      },
+    });
+  }
+
   /** Inject a system message mid-session and ask for a spoken reply. */
   injectSystem(text: string) {
     this.send({

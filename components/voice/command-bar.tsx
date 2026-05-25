@@ -209,7 +209,7 @@ export function CommandBar({
       </div>
 
       {/* ── Desktop: single row (unchanged layout, but disabled support) ──────────────────── */}
-      <div className="hidden sm:flex items-end gap-2">
+      <div className="hidden sm:flex items-center gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="shrink-0">
@@ -228,7 +228,7 @@ export function CommandBar({
           <TooltipContent>Start voice input</TooltipContent>
         </Tooltip>
 
-        <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2 self-stretch")}>
+        <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2 !h-10")}>
           {(["ptt", "continuous"] as const).map((m) => (
             <Tooltip key={m}>
               <TooltipTrigger asChild>
