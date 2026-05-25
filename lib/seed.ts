@@ -312,7 +312,7 @@ export function buildSeed(): Customer[] {
 
 /**
  * Seeded call transcripts for a subset of customers, so the "summarize the
- * call" and Deal Brief flows have real content — while others (Tariq, Omar,
+ * call" and talking-points flows have real content — while others (Tariq, Omar,
  * Lena, Sam) have none, to demo the "import a transcript first" path.
  */
 export function buildSeedCallContexts(): Map<string, CallContext[]> {

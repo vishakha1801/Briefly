@@ -95,9 +95,9 @@ export function interpret(u: string): AgentIntent {
     return { kind: "create_customer", name, company };
   }
 
-  // Deal brief: "brief me", "get talking points", "what should I know before the call", "prep me"
+  // Talking points: "brief me", "get talking points", "what should I know before the call", "prep me"
   if (
-    /\b(deal brief|brief me|prep me|prep for|get me up to speed|what should i know|before (i|the|this|our) (call|talk|meeting)|prepare me|brief on|talking points?|get (me )?(the )?talking points?)\b/.test(
+    /\b(brief me|prep me|prep for|get me up to speed|what should i know|before (i|the|this|our) (call|talk|meeting)|prepare me|brief on|talking points?|get (me )?(the )?talking points?)\b/.test(
       lower
     )
   ) {

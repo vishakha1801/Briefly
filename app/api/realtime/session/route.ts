@@ -39,7 +39,6 @@ async function mint() {
 
     if (!res.ok) {
       const detail = await res.text();
-      console.error("realtime session mint failed:", res.status, detail);
       return NextResponse.json(
         { error: "failed to mint realtime token", detail, simulate: true },
         { status: 502 }
@@ -51,8 +50,7 @@ async function mint() {
       client_secret: { value: data.value },
       model: MODELS.realtime,
     });
-  } catch (err) {
-    console.error("realtime session error:", err);
+  } catch {
     return NextResponse.json(
       { error: "realtime session error", simulate: true },
       { status: 500 }

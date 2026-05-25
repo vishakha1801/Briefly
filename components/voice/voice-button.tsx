@@ -70,8 +70,8 @@ export function VoiceButton({
       <motion.button
         type="button"
         disabled={disabled && !speaking}
-        whileTap={{ scale: 0.92 }}
-        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.025 }}
         aria-pressed={active}
         aria-label={
           speaking
@@ -84,7 +84,7 @@ export function VoiceButton({
         }
         title={speaking ? "Interrupt" : undefined}
         className={cn(
-          "relative grid touch-none select-none place-items-center rounded-full text-white transition-all duration-200 disabled:opacity-40",
+          "relative grid touch-none select-none place-items-center rounded-full text-white transition-[box-shadow,opacity] duration-160 ease-out-custom disabled:opacity-40",
           active ? "shadow-[0_0_24px_-4px_rgba(59,73,234,0.5)]" : "shadow-md",
           compact ? "size-10" : "size-[72px]"
         )}

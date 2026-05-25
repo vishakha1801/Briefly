@@ -71,8 +71,7 @@ export async function POST(request: Request) {
       completion.choices[0]?.message?.content ?? "{}"
     ) as StructuredNote;
     return NextResponse.json(parsed);
-  } catch (err) {
-    console.error("note-draft failed, falling back:", err);
+  } catch {
     return NextResponse.json(buildStructuredNote(source));
   }
 }

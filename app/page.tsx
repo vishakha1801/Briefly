@@ -29,6 +29,7 @@ export default function VoiceHome() {
   const existing = useAgentStore.getState().sessionId;
   const [sessionId] = useState(() => existing ?? newSessionId());
   const agent = useAgent(sessionId);
+  const { pttStart, pttStop } = agent;
   const isDesktop = useIsDesktop();
   const [importOpen, setImportOpen] = useState(false);
 
@@ -40,8 +41,6 @@ export default function VoiceHome() {
   const { data: customer } = useCustomer(selectedCustomerId ?? "");
 
   const live = status === "live";
-  const connecting = status === "connecting";
-
   // Spacebar PTT: hold to record, release to send — desktop only.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -59,13 +58,13 @@ export default function VoiceHome() {
       const store = useAgentStore.getState();
       if (store.voiceMode !== "ptt" || store.status !== "live") return;
       e.preventDefault();
-      agent.pttStart();
+      pttStart();
     }
     function onKeyUp(e: KeyboardEvent) {
       if (e.code !== "Space") return;
       const store = useAgentStore.getState();
       if (store.voiceMode !== "ptt" || store.status !== "live") return;
-      agent.pttStop();
+      pttStop();
     }
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -73,7 +72,7 @@ export default function VoiceHome() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [agent.pttStart, agent.pttStop]);
+  }, [pttStart, pttStop]);
 
   function onMainButton() {
     if (!live) {
@@ -179,9 +178,9 @@ export default function VoiceHome() {
         {/* ── Body ────────────────────────────────────────────────── */}
         <div className="flex min-h-0 flex-1">
           {/* ── Center workspace — one cohesive voice session ──── */}
-          <section className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 pb-3 pt-2 sm:px-5 sm:pt-2">
-            {/* Compact orb + status */}
-            <OrbStage size={isDesktop ? 110 : 92} />
+          <section className="flex min-w-0 flex-1 flex-col gap-4 px-3 pb-3 pt-3 sm:px-5 sm:pt-3">
+            {/* Orb */}
+            <OrbStage size={isDesktop ? 140 : 108} />
 
             {/* Quick actions */}
             <ContextPrompts
@@ -202,7 +201,7 @@ export default function VoiceHome() {
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("transcript")}
                     className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
                       centerView === "transcript"
                         ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
                         : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
@@ -214,7 +213,7 @@ export default function VoiceHome() {
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("recap")}
                     className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
                       centerView === "recap"
                         ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
                         : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
@@ -226,7 +225,7 @@ export default function VoiceHome() {
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("notes")}
                     className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
                       centerView === "notes"
                         ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
                         : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
@@ -262,7 +261,6 @@ export default function VoiceHome() {
               {/* Command Bar */}
               <CommandBar
                 live={live}
-                connecting={connecting}
                 onMic={onMainButton}
                 onHoldStart={agent.pttStart}
                 onHoldEnd={agent.pttStop}
@@ -290,7 +288,12 @@ export default function VoiceHome() {
 
       {/* Hidden sink for the agent's voice in realtime mode. */}
       {/* autoPlay is required — the track arrives outside a user-gesture context. */}
-      <audio id="briefly-agent-audio" autoPlay className="hidden" />
+      <audio
+        id="briefly-agent-audio"
+        autoPlay
+        playsInline
+        className="pointer-events-none fixed bottom-0 left-0 h-px w-px opacity-0"
+      />
     </>
   );
 }

@@ -37,10 +37,10 @@
   --color-cyan-accent: var(--cyan-accent);
   --color-bg-tint: var(--bg-tint);
 
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-hanken);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-hanken);
+  --font-sans: "Inter", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Inter", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --font-heading: "Inter", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
 
   --radius-xs: 6px;
   --radius-sm: 8px;
@@ -264,7 +264,7 @@
   }
 
   .glass-navbar {
-    background: oklch(1 0 0 / 0.4);
+    background: oklch(1 0 0 / 0.32);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid oklch(0.564 0.283 273.6 / 0.08);

@@ -8,6 +8,7 @@ import {
   MicIcon,
   PencilIcon,
   UploadIcon,
+  XIcon,
 } from "lucide-react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { Button } from "@/components/ui/button";
@@ -88,15 +89,21 @@ export function CallRecap({
   useEffect(() => {
     if (!recapAction) return;
     useAgentStore.getState().consumeRecapAction();
-    if (recapAction === "dictate") startDictating();
-    else if (recapAction === "type") { setDraft(""); setInlineView("typing"); }
-  // startDictating is stable (no deps that change), intentionally excluded
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const id = window.setTimeout(() => {
+      if (recapAction === "dictate") startDictating();
+      else if (recapAction === "type") {
+        setDraft("");
+        setInlineView("typing");
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [recapAction]);
 
   function resetInline() {
     dictateRecRef.current?.abort();
     dictateRecRef.current = null;
+    // Release the mic so normal chat recognition can resume.
+    useAgentStore.getState().setActiveCaptureMode(null);
     setInlineView("none");
     setDraft("");
     setDictateStatus("idle");
@@ -131,6 +138,8 @@ export function CallRecap({
 
   // ── Dictation ──────────────────────────────────────────────────────────────
   function startDictating() {
+    // Suspend normal chat recognition before opening the mic for recap.
+    useAgentStore.getState().setActiveCaptureMode("recap");
     setInlineView("dictating");
     setDictateStatus("listening");
     setDictateDraft("");
@@ -543,7 +552,17 @@ function InlinePanel({
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {label}
         </p>
-        {labelRight}
+        <div className="flex items-center gap-2">
+          {labelRight}
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close panel"
+            className="grid size-6 place-items-center rounded-xs text-muted-foreground transition-colors hover:bg-white/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
       </div>
       {children}
     </div>

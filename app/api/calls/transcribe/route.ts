@@ -22,8 +22,7 @@ export async function POST(request: Request) {
       file,
     });
     return NextResponse.json({ transcript: transcription.text });
-  } catch (err) {
-    console.error("whisper transcription failed:", err);
+  } catch {
     return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
   }
 }

@@ -120,10 +120,10 @@ export function ContextChip() {
 
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent
-          className="glass-panel !max-w-none flex h-[min(54vh,410px)] w-[min(770px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-lg p-0 shadow-[0_20px_60px_rgba(16,20,63,0.14)] ![background:oklch(1_0_0/0.72)]"
+          className="glass-panel !max-w-none flex h-[min(54vh,410px)] w-[min(770px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-lg p-0 shadow-[0_20px_60px_rgba(16,20,63,0.14)] ![background:oklch(1_0_0/0.88)]"
           showCloseButton={false}
         >
-          <DialogHeader className="flex flex-row items-center justify-between border-b border-brand/8 bg-white/20 px-4 py-3">
+          <DialogHeader className="flex flex-row items-center justify-between border-b border-brand/8 bg-white/30 px-4 py-3">
             <DialogTitle className="text-sm font-semibold tracking-tight">
               {view === "create" ? "New customer" : "Customer context"}
             </DialogTitle>
@@ -178,17 +178,22 @@ export function ContextChip() {
                         handleClose(false);
                       }}
                       className={cn(
-                        "mb-1 grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-sm border border-brand/8 bg-white/35 px-2.5 py-1 transition-colors data-selected:border-brand/18 data-selected:bg-white/60 data-selected:text-foreground",
-                        selectedId === c.id && "border-brand/20 bg-white/65"
+                        "mb-1 grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-sm border border-brand/8 bg-white/45 px-2.5 py-2 transition-colors data-selected:border-brand/18 data-selected:bg-white/70 data-selected:text-foreground",
+                        selectedId === c.id && "border-brand/20 bg-white/75"
                       )}
                     >
-                      <div className="min-w-0 space-y-0.5">
+                      <div className="flex min-w-0 flex-col justify-center">
                         <div className="truncate text-sm font-semibold leading-tight text-foreground/90">{c.name}</div>
                         <div className="truncate text-xs leading-tight text-muted-foreground">{c.company}</div>
                       </div>
-                      <span className="pt-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-                        {relativeDate(c.lastContact)}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end justify-center text-right leading-tight">
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                          Last contact
+                        </span>
+                        <span className="mt-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                          {relativeDate(c.lastContact)}
+                        </span>
+                      </div>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -261,7 +266,7 @@ export function ContextChip() {
                   <SelectTrigger id="cc-stage" className="h-9 rounded-sm border-brand/10 bg-white/45 text-sm focus-visible:border-brand/25 focus-visible:ring-brand/10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="glass-panel rounded-sm border-brand/10">
+                  <SelectContent className="rounded-sm border-brand/10 bg-white/95 shadow-[0_14px_38px_rgba(16,20,63,0.16)] backdrop-blur-xl ![background:oklch(1_0_0/0.96)]">
                     {STAGES.map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}

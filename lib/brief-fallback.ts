@@ -1,7 +1,7 @@
 import type { CallContext, Customer, DealBrief } from "./types";
 
 /**
- * Builds a Deal Brief from customer context + transcripts without a model, so
+ * Builds talking points from customer context + transcripts without a model, so
  * the feature works offline. Cue-word extraction over notes + call transcripts.
  */
 export function buildDealBrief(

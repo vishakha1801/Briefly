@@ -9,7 +9,6 @@ import {
   PhoneIcon,
   StickyNoteIcon,
   PencilIcon,
-  UploadIcon,
   CheckIcon,
   XIcon,
   Loader2Icon,
@@ -518,7 +517,7 @@ export function RightSidebar() {
           className="thin-scroll min-h-0 flex-1 overflow-y-auto focus-visible:outline-none"
         >
           <div className="space-y-2 px-1">
-            <div className="flex items-center gap-2 pb-1">
+            <div className="mb-2 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab("customer")}
@@ -527,6 +526,8 @@ export function RightSidebar() {
                 <ArrowLeftIcon className="size-3" />
                 Back
               </button>
+            </div>
+            <div className="pb-1">
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 All transcripts
               </span>

@@ -11,6 +11,12 @@ export type AgentStatus = "idle" | "connecting" | "live" | "ended";
 export type AgentMode = "realtime" | "simulation" | null;
 /** How the rep talks: push-to-talk (review before send) vs continuous (VAD). */
 export type VoiceMode = "ptt" | "continuous";
+/**
+ * Which feature is currently capturing microphone input.
+ * "recap"  → recap dictation is active; normal chat recognition is suspended.
+ * "chat"   → normal hands-free chat is active (default / null is equivalent).
+ */
+export type CaptureMode = "chat" | "recap" | null;
 
 interface AgentState {
   sessionId: string | null;
@@ -29,11 +35,14 @@ interface AgentState {
   /** Which view fills the center workspace. */
   centerView: CenterView;
   dealBrief: DealBrief | null;
+  dealBriefAt: number | null;
   briefLoading: boolean;
   /** True when the last brief attempt had no context — drives suggestion chips in ContextPrompts. */
   briefNeedsContext: boolean;
   /** Pending auto-open action for the Call recap tab (consumed on mount). */
   recapAction: "dictate" | "type" | null;
+  /** Which feature currently owns the microphone. Recap dictation suspends chat recognition. */
+  activeCaptureMode: CaptureMode;
   postCallDraft: StructuredNote | null;
   postCallLoading: boolean;
   startedAt: number | null;
@@ -42,7 +51,12 @@ interface AgentState {
   /** Saved threads per customer id ("__none" for no customer selected). */
   threads: Record<
     string,
-    { transcript: TranscriptTurn[]; actions: ActionEvent[]; dealBrief: DealBrief | null }
+    {
+      transcript: TranscriptTurn[];
+      actions: ActionEvent[];
+      dealBrief: DealBrief | null;
+      dealBriefAt: number | null;
+    }
   >;
 
   init: (sessionId: string) => void;
@@ -57,6 +71,7 @@ interface AgentState {
   /** Navigate to the recap tab and optionally auto-open an inline view. Atomic. */
   openRecap: (action?: "dictate" | "type") => void;
   consumeRecapAction: () => void;
+  setActiveCaptureMode: (mode: CaptureMode) => void;
   setPostCallDraft: (n: StructuredNote | null) => void;
   setPostCallLoading: (v: boolean) => void;
   /** Set the selected customer without touching the conversation (agent use). */
@@ -142,9 +157,11 @@ const initial = {
   errorMsg: null as string | null,
   centerView: "transcript" as CenterView,
   dealBrief: null as DealBrief | null,
+  dealBriefAt: null as number | null,
   briefLoading: false,
   briefNeedsContext: false,
   recapAction: null as "dictate" | "type" | null,
+  activeCaptureMode: null as CaptureMode,
   postCallDraft: null as StructuredNote | null,
   postCallLoading: false,
   startedAt: null,
@@ -152,7 +169,12 @@ const initial = {
   actions: [],
   threads: {} as Record<
     string,
-    { transcript: TranscriptTurn[]; actions: ActionEvent[]; dealBrief: DealBrief | null }
+    {
+      transcript: TranscriptTurn[];
+      actions: ActionEvent[];
+      dealBrief: DealBrief | null;
+      dealBriefAt: number | null;
+    }
   >,
 };
 
@@ -188,6 +210,7 @@ function patchActiveThread(
     transcript: TranscriptTurn[];
     actions: ActionEvent[];
     dealBrief: DealBrief | null;
+    dealBriefAt: number | null;
   }>
 ) {
   const key = threadKey(state.selectedCustomerId);
@@ -195,6 +218,7 @@ function patchActiveThread(
     transcript: state.transcript,
     actions: state.actions,
     dealBrief: state.dealBrief,
+    dealBriefAt: state.dealBriefAt,
   };
   return {
     ...state.threads,
@@ -223,6 +247,7 @@ function normalizeThreads(
           ),
           actions: thread.actions ?? [],
           dealBrief: thread.dealBrief ?? null,
+          dealBriefAt: thread.dealBriefAt ?? null,
         },
       ];
     })
@@ -244,14 +269,19 @@ export const useAgentStore = create<AgentState>()(
       setError: (errorMsg) => set({ errorMsg }),
       setCenterView: (centerView) => set({ centerView }),
       setDealBrief: (dealBrief) =>
-        set((s) => ({
-          dealBrief,
-          threads: patchActiveThread(s, { dealBrief }),
-        })),
+        set((s) => {
+          const dealBriefAt = dealBrief ? Date.now() : null;
+          return {
+            dealBrief,
+            dealBriefAt,
+            threads: patchActiveThread(s, { dealBrief, dealBriefAt }),
+          };
+        }),
       setBriefLoading: (briefLoading) => set({ briefLoading }),
       setBriefNeedsContext: (briefNeedsContext) => set({ briefNeedsContext }),
       openRecap: (action) => set({ centerView: "recap", recapAction: action ?? null }),
       consumeRecapAction: () => set({ recapAction: null }),
+      setActiveCaptureMode: (activeCaptureMode) => set({ activeCaptureMode }),
       setPostCallDraft: (postCallDraft) => set({ postCallDraft }),
       setPostCallLoading: (postCallLoading) => set({ postCallLoading }),
       setSelectedCustomer: (selectedCustomerId) => set({ selectedCustomerId }),
@@ -266,12 +296,14 @@ export const useAgentStore = create<AgentState>()(
             transcript: s.transcript,
             actions: s.actions,
             dealBrief: s.dealBrief,
+            dealBriefAt: s.dealBriefAt,
           },
         };
         const target = threads[threadKey(id)] ?? {
           transcript: [],
           actions: [],
           dealBrief: null,
+          dealBriefAt: null,
         };
         set({
           selectedCustomerId: id,
@@ -281,6 +313,7 @@ export const useAgentStore = create<AgentState>()(
           ),
           actions: target.actions,
           dealBrief: target.dealBrief,
+          dealBriefAt: target.dealBriefAt ?? null,
           centerView: "transcript",
         });
       },

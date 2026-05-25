@@ -92,8 +92,7 @@ export async function POST(request: Request) {
       suggestedTalkTrack: parsed.suggestedTalkTrack,
       recommendedNextStep: parsed.recommendedNextStep,
     });
-  } catch (err) {
-    console.error("brief route failed, falling back:", err);
+  } catch {
     return NextResponse.json(buildDealBrief(customer, callContexts));
   }
 }

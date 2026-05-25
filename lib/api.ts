@@ -17,6 +17,15 @@ async function json<T>(input: Response | Promise<Response>): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+function signalWithTimeout(ms: number) {
+  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
+    return AbortSignal.timeout(ms);
+  }
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
 export const api = {
   listCustomers: () =>
     json<{ customers: Customer[] }>(fetch("/api/customers")).then(
@@ -34,6 +43,7 @@ export const api = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerId }),
+        signal: signalWithTimeout(15000),
       })
     ),
 

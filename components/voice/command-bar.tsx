@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 export function CommandBar({
   live,
-  connecting,
   onMic,
   onHoldStart,
   onHoldEnd,
@@ -19,7 +18,6 @@ export function CommandBar({
   onSetVoiceMode,
 }: {
   live: boolean;
-  connecting: boolean;
   onMic: () => void;
   onHoldStart: () => void;
   onHoldEnd: () => void;
@@ -51,7 +49,7 @@ export function CommandBar({
       };
 
   const textareaBaseClass = cn(
-    "max-h-28 flex-1 resize-none rounded-sm border text-sm transition-all",
+    "max-h-28 flex-1 resize-none rounded-sm border text-sm transition-[background-color,border-color,box-shadow] duration-160 ease-out-custom",
     "focus-visible:ring-0 focus-visible:outline-none",
     "shadow-[inset_0_1px_2px_rgba(59,73,234,0.04),0_1px_0_rgba(255,255,255,0.7)]",
     "focus-visible:shadow-[inset_0_1px_2px_rgba(59,73,234,0.06),0_0_0_3px_rgba(59,73,234,0.09)] focus-visible:border-brand/30",
@@ -65,17 +63,14 @@ export function CommandBar({
         {/* Row 1: mode toggle + end */}
         <div className="flex items-center gap-1">
           <div
-            className={cn(
-              "flex flex-1 items-center rounded-sm border border-brand/10 bg-brand/5 p-[2px] text-[10px] font-medium transition-opacity duration-150",
-              !live && "opacity-40 pointer-events-none"
-            )}
+            className="flex flex-1 items-center rounded-sm border border-brand/10 bg-brand/5 p-[2px] text-[10px] font-medium"
           >
             {(["ptt", "continuous"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => onSetVoiceMode(m)}
                 className={cn(
-                  "flex-1 rounded-xs py-[3px] text-center transition-all duration-150",
+                  "flex-1 rounded-xs py-[3px] text-center transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom active:scale-[0.97]",
                   voiceMode === m
                     ? "bg-white text-brand shadow-[0_1px_3px_rgba(59,73,234,0.07)] border border-brand/5"
                     : "text-muted-foreground hover:text-foreground"
@@ -91,7 +86,7 @@ export function CommandBar({
               variant="ghost"
               onClick={onEnd}
               aria-label="End session"
-              className="size-7 shrink-0 rounded-sm text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+              className="size-7 shrink-0 rounded-sm text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
             >
               <PowerIcon className="size-3.5" />
             </Button>
@@ -103,7 +98,6 @@ export function CommandBar({
           {/* Compact mobile mic — 44px, soft shadow, no glow rings */}
           <button
             type="button"
-            disabled={connecting && !agentSpeaking}
             aria-label={
               agentSpeaking
                 ? "Interrupt"
@@ -115,7 +109,7 @@ export function CommandBar({
             }
             title={agentSpeaking ? "Interrupt" : undefined}
             className={cn(
-              "relative grid shrink-0 touch-none select-none place-items-center rounded-full text-white transition-all duration-200 disabled:opacity-40",
+              "relative grid shrink-0 touch-none select-none place-items-center rounded-full text-white transition-[transform,box-shadow,opacity] duration-160 ease-out-custom active:scale-[0.97] disabled:opacity-40",
               "size-11",
               live
                 ? "shadow-[0_1px_6px_rgba(59,73,234,0.18),inset_0_1px_0_rgba(255,255,255,0.14)]"
@@ -162,15 +156,14 @@ export function CommandBar({
                 : "Ask or speak…"
             }
             rows={1}
-            disabled={!live}
             className={cn(textareaBaseClass, "min-h-[36px] text-[13px] [field-sizing:normal]")}
             style={textareaStyle}
           />
           <Button
             size="icon"
             onClick={submit}
-            disabled={!live || !text.trim()}
-            className="size-9 shrink-0 rounded-sm bg-brand hover:bg-brand/90 transition-all shadow-[0_1px_5px_rgba(59,73,234,0.13)]"
+            disabled={!text.trim()}
+            className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_1px_5px_rgba(59,73,234,0.13)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
           >
             <ArrowUpIcon className="size-3.5" />
           </Button>
@@ -182,7 +175,6 @@ export function CommandBar({
         <VoiceButton
           compact
           active={live}
-          disabled={connecting}
           speaking={agentSpeaking}
           holdToTalk={live && voiceMode === "ptt" && !agentSpeaking}
           onClick={agentSpeaking ? onInterrupt : onMic}
@@ -191,17 +183,14 @@ export function CommandBar({
         />
 
         <div
-          className={cn(
-            "flex shrink-0 items-center self-stretch rounded-sm border border-brand/10 bg-brand/5 p-0.5 text-[11px] font-medium transition-opacity duration-150",
-            !live && "opacity-40 pointer-events-none"
-          )}
+          className="flex shrink-0 items-center self-stretch rounded-sm border border-brand/10 bg-brand/5 p-0.5 text-[11px] font-medium"
         >
           {(["ptt", "continuous"] as const).map((m) => (
             <button
               key={m}
               onClick={() => onSetVoiceMode(m)}
               className={cn(
-                "rounded-xs px-2.5 py-1 transition-all duration-150",
+                "rounded-xs px-2.5 py-1 transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom active:scale-[0.97]",
                 voiceMode === m
                   ? "bg-white text-brand shadow-[0_2px_6px_rgba(59,73,234,0.06)] border border-brand/5"
                   : "text-muted-foreground hover:text-foreground"
@@ -227,16 +216,15 @@ export function CommandBar({
               : "Speak or type a command…"
           }
           rows={1}
-          disabled={!live}
-          className={cn(textareaBaseClass, "min-h-10")}
+          className={cn(textareaBaseClass, "min-h-10 text-[13px] placeholder:text-[13px]")}
           style={textareaStyle}
         />
 
         <Button
           size="icon"
           onClick={submit}
-          disabled={!live || !text.trim()}
-          className="size-10 shrink-0 rounded-sm bg-brand hover:bg-brand/90 transition-all shadow-[0_2px_10px_rgba(59,73,234,0.15)] hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)]"
+          disabled={!text.trim()}
+          className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)] active:scale-[0.97]"
         >
           <ArrowUpIcon className="size-4" />
         </Button>
@@ -247,7 +235,7 @@ export function CommandBar({
             variant="ghost"
             onClick={onEnd}
             aria-label="End session"
-            className="size-10 shrink-0 rounded-sm text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 backdrop-blur-md transition-all"
+            className="size-10 shrink-0 rounded-sm text-muted-foreground backdrop-blur-md transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
           >
             <PowerIcon className="size-4" />
           </Button>

@@ -36,8 +36,9 @@ export interface RealtimeCallbacks {
   /** A completed transcript turn from the rep. */
   onTranscript?: (text: string) => void;
   /**
-   * Agent spoken text (fired at transcript-done, while audio is still playing).
-   * hasAudio=true means WebRTC audio is streaming; false means text-only response.
+   * Agent spoken text (fired at transcript-done, while audio may still be playing).
+   * hasAudio=true means WebRTC audio is confirmed streaming AND the <audio> element
+   * successfully started playback. hasAudio=false means use TTS as fallback.
    */
   onAgentText?: (text: string, hasAudio: boolean) => void;
   /** Agent activity for the orb + status line. */
@@ -57,6 +58,32 @@ export interface RealtimeCallbacks {
    * Use this — not a text-length timer — to resume hands-free listening.
    */
   onAudioDone?: () => void;
+}
+
+// Explicitly request audio on every response.create. gpt-realtime-2 accepts
+// either ["audio"] or ["text"], not both in the same response.
+const RESPONSE_OPTS = { output_modalities: ["audio"] } as const;
+
+function textFromResponseDone(response: unknown): string {
+  if (!response || typeof response !== "object") return "";
+  const output = (response as { output?: unknown }).output;
+  if (!Array.isArray(output)) return "";
+
+  const parts: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const transcript = (part as { transcript?: unknown }).transcript;
+      const text = (part as { text?: unknown }).text;
+      if (typeof transcript === "string") parts.push(transcript);
+      else if (typeof text === "string") parts.push(text);
+    }
+  }
+
+  return parts.join(" ").trim();
 }
 
 const TOOLS = [
@@ -180,14 +207,28 @@ export class RealtimeSession {
   private micStream: MediaStream | null = null;
   private cb: RealtimeCallbacks;
   private instructions: string;
+  private model = "gpt-realtime-2";
   private audioCtx: AudioContext | null = null;
   private levelRAF: number | null = null;
   private currentResponseHasAudio = false;
+  private currentResponseTextSent = false;
+  private remoteAudioProgressed = false;
   private audioDoneTimer: number | null = null;
+
+  /**
+   * True only after the remote <audio> element emits playback/progress events.
+   * A resolved play() promise alone is not enough to prove audible output.
+   */
+  private realtimeAudioPlayable = false;
 
   constructor(cb: RealtimeCallbacks, instructions: string) {
     this.cb = cb;
     this.instructions = instructions;
+  }
+
+  /** Whether the remote audio track is confirmed playing in this session. */
+  get audioPlayable(): boolean {
+    return this.realtimeAudioPlayable;
   }
 
   /** Sample mic amplitude (RMS) on a rAF loop and report it for the orb. */
@@ -212,7 +253,6 @@ export class RealtimeSession {
           sum += v * v;
         }
         const rms = Math.sqrt(sum / data.length);
-        // Normalize/curve a bit so quiet speech still moves the orb.
         this.cb.onLevel?.(Math.min(1, rms * 3.2));
         this.levelRAF = requestAnimationFrame(tick);
       };
@@ -220,6 +260,21 @@ export class RealtimeSession {
     } catch {
       /* level meter is best-effort */
     }
+  }
+
+  private getAudioEl(): HTMLAudioElement | null {
+    return document.getElementById("briefly-agent-audio") as HTMLAudioElement | null;
+  }
+
+  private tryPlayAudio() {
+    const el = this.getAudioEl();
+    if (!el?.srcObject) return;
+    el.muted = false;
+    el.volume = 1;
+    el.play().catch((err: unknown) => {
+      console.warn("[Briefly] WebRTC audio play() blocked:", err);
+      this.realtimeAudioPlayable = false;
+    });
   }
 
   async connect(): Promise<void> {
@@ -234,23 +289,29 @@ export class RealtimeSession {
       client_secret: { value: string };
       model: string;
     };
+    this.model = model;
 
     const pc = new RTCPeerConnection();
     this.pc = pc;
+    pc.addTransceiver("audio", { direction: "sendrecv" });
 
-    // Remote audio (the agent's voice) -> a hidden <audio> element. We call
-    // play() explicitly (the track arrives async, outside the click gesture);
-    // getUserMedia having been granted gives the page the engagement needed for
-    // autoplay, but the explicit call + catch keeps it robust across browsers.
+    // Receive the agent's voice on a hidden <audio> element.
+    // playsInline prevents full-screen on iOS. We call play() explicitly here
+    // inside the ontrack callback (still within the getUserMedia activation
+    // context) for maximum autoplay compatibility.
     pc.ontrack = (e) => {
-      const el = document.getElementById(
-        "briefly-agent-audio"
-      ) as HTMLAudioElement | null;
-      if (el) {
-        el.autoplay = true;
-        el.srcObject = e.streams[0];
-        el.play().catch(() => {});
-      }
+      const el = this.getAudioEl();
+      if (!el) return;
+      el.autoplay = true;
+      el.setAttribute("playsinline", "true");
+      const markPlayable = () => {
+        this.realtimeAudioPlayable = true;
+        this.remoteAudioProgressed = true;
+      };
+      el.onplaying = markPlayable;
+      el.ontimeupdate = markPlayable;
+      el.srcObject = e.streams[0];
+      this.tryPlayAudio();
     };
 
     try {
@@ -304,14 +365,23 @@ export class RealtimeSession {
   }
 
   private configureSession() {
+    // The current Realtime session schema requires type/model on session.update.
     this.send({
       type: "session.update",
       session: {
         type: "realtime",
+        model: this.model,
+        output_modalities: ["audio"],
         instructions: this.instructions,
-        voice: "verse",
-        input_audio_transcription: { model: "whisper-1" },
-        turn_detection: { type: "server_vad", create_response: true },
+        audio: {
+          input: {
+            transcription: { model: "whisper-1" },
+            turn_detection: { type: "server_vad", create_response: true },
+          },
+          output: {
+            voice: "marin",
+          },
+        },
         tools: TOOLS,
         tool_choice: "auto",
       },
@@ -328,7 +398,7 @@ export class RealtimeSession {
         content: [{ type: "input_text", text }],
       },
     });
-    this.send({ type: "response.create" });
+    this.send({ type: "response.create", response: RESPONSE_OPTS });
   }
 
   /** Inject a system context note without triggering a new response (used for customer switching). */
@@ -343,7 +413,7 @@ export class RealtimeSession {
     });
   }
 
-  /** Inject a system message mid-session (used for transcript corrections). */
+  /** Inject a system message mid-session and ask for a spoken reply. */
   injectSystem(text: string) {
     this.send({
       type: "conversation.item.create",
@@ -353,7 +423,7 @@ export class RealtimeSession {
         content: [{ type: "input_text", text }],
       },
     });
-    this.send({ type: "response.create" });
+    this.send({ type: "response.create", response: RESPONSE_OPTS });
   }
 
   private async handleEvent(evt: {
@@ -363,6 +433,7 @@ export class RealtimeSession {
     arguments?: string;
     call_id?: string;
     error?: { message?: string; code?: string; type?: string };
+    response?: unknown;
   }) {
     switch (evt.type) {
       case "input_audio_buffer.speech_started":
@@ -373,27 +444,37 @@ export class RealtimeSession {
         break;
       case "response.created":
         this.currentResponseHasAudio = false;
+        this.currentResponseTextSent = false;
+        this.remoteAudioProgressed = false;
         if (this.audioDoneTimer) {
           window.clearTimeout(this.audioDoneTimer);
           this.audioDoneTimer = null;
         }
         this.cb.onActivity?.("responding");
         break;
+
+      // Both event name variants — older and newer Realtime API formats.
+      case "response.audio.delta":
       case "response.output_audio.delta":
         this.currentResponseHasAudio = true;
         this.cb.onActivity?.("speaking");
-        // Kick the audio element out of a paused state that browser autoplay
-        // policy may have put it in (the initial play() call in ontrack happens
-        // outside a user-gesture context and can be silently blocked).
-        {
-          const el = document.getElementById(
-            "briefly-agent-audio"
-          ) as HTMLAudioElement | null;
-          if (el?.paused && el.srcObject) el.play().catch(() => {});
+        // Re-attempt play() on every first audio chunk in case the initial
+        // ontrack play() was blocked and a later user gesture now allows it.
+        if (!this.realtimeAudioPlayable) {
+          this.tryPlayAudio();
         }
         break;
+
       case "response.done":
-        if (this.currentResponseHasAudio) {
+        if (!this.currentResponseTextSent) {
+          const text = textFromResponseDone(evt.response);
+          if (text) {
+            this.currentResponseTextSent = true;
+            const hasAudio = this.currentResponseHasAudio && this.remoteAudioProgressed;
+            this.cb.onAgentText?.(text, hasAudio);
+          }
+        }
+        if (this.currentResponseHasAudio && this.remoteAudioProgressed) {
           // Give the client-side audio buffer ~600 ms to drain before signalling done.
           this.audioDoneTimer = window.setTimeout(() => {
             this.audioDoneTimer = null;
@@ -404,20 +485,32 @@ export class RealtimeSession {
           this.cb.onActivity?.("idle");
         }
         break;
+
       case "conversation.item.input_audio_transcription.completed":
         if (evt.transcript) this.cb.onTranscript?.(evt.transcript);
         break;
+
+      // Both transcript event name variants.
       case "response.audio_transcript.done":
       case "response.output_audio_transcript.done":
-        if (evt.transcript) this.cb.onAgentText?.(evt.transcript, this.currentResponseHasAudio);
+        if (evt.transcript) {
+          // hasAudio=true only when BOTH the server sent audio chunks AND the
+          // browser audio element confirmed playback started. If either is missing,
+          // the caller should fall back to browser TTS.
+          const hasAudio = this.currentResponseHasAudio && this.remoteAudioProgressed;
+          this.currentResponseTextSent = true;
+          this.cb.onAgentText?.(evt.transcript, hasAudio);
+        }
         break;
+
       case "error": {
         const msg =
           evt.error?.message || evt.error?.code || "Realtime error";
-        console.error("[RealtimeSession] error:", evt.error ?? evt);
         this.cb.onServerError?.(msg);
+        this.cb.onActivity?.("idle");
         break;
       }
+
       case "response.function_call_arguments.done": {
         const name = evt.name as RealtimeToolName;
         const args = evt.arguments
@@ -434,7 +527,8 @@ export class RealtimeSession {
           },
         });
         this.cb.onActivity?.("responding");
-        this.send({ type: "response.create" });
+        // Explicitly request audio for the post-tool spoken summary.
+        this.send({ type: "response.create", response: RESPONSE_OPTS });
         break;
       }
     }
@@ -447,12 +541,12 @@ export class RealtimeSession {
   /** Barge-in: stop the agent's current spoken response so the rep can talk. */
   interrupt() {
     this.send({ type: "response.cancel" });
-    const el = document.getElementById(
-      "briefly-agent-audio"
-    ) as HTMLAudioElement | null;
+    const el = this.getAudioEl();
     if (el) {
       el.pause();
       el.currentTime = el.duration || 0;
+      // Mark as not playable so the next response.audio.delta re-attempts play().
+      this.realtimeAudioPlayable = false;
     }
   }
 
@@ -470,6 +564,8 @@ export class RealtimeSession {
     this.pc?.close();
     this.pc = null;
     this.dc = null;
+    this.realtimeAudioPlayable = false;
+    this.remoteAudioProgressed = false;
     this.cb.onLevel?.(0);
     this.cb.onStatus?.("closed");
   }

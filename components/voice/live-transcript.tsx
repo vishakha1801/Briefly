@@ -34,7 +34,26 @@ export function LiveTranscript({
 }) {
   const transcript = useAgentStore((s) => s.transcript);
   const dealBrief = useAgentStore((s) => s.dealBrief);
+  const dealBriefAt = useAgentStore((s) => s.dealBriefAt);
   const briefLoading = useAgentStore((s) => s.briefLoading);
+  const timeline = [
+    ...transcript.map((turn) => ({
+      type: "turn" as const,
+      id: turn.id,
+      at: turn.at,
+      turn,
+    })),
+    ...(dealBrief && !briefLoading
+      ? [
+          {
+            type: "brief" as const,
+            id: `brief-${dealBrief.customerId}`,
+            at: dealBriefAt ?? Math.max(0, ...transcript.map((turn) => turn.at)),
+            brief: dealBrief,
+          },
+        ]
+      : []),
+  ].sort((a, b) => a.at - b.at);
 
   return (
     <Conversation className="h-full overflow-hidden" initial="smooth" resize="smooth">
@@ -49,10 +68,13 @@ export function LiveTranscript({
           />
         )}
 
-        {/* Transcript turns */}
-        {transcript.map((turn) => (
-          <Bubble key={turn.id} turn={turn} onSave={onEditTurn} />
-        ))}
+        {timeline.map((item) =>
+          item.type === "turn" ? (
+            <Bubble key={item.id} turn={item.turn} onSave={onEditTurn} />
+          ) : (
+            <TalkingPointsMessage key={item.id} brief={item.brief} />
+          )
+        )}
 
         {/* Talking points loading */}
         {briefLoading && (
@@ -62,19 +84,20 @@ export function LiveTranscript({
           </div>
         )}
 
-        {/* Talking points card — inline in content flow so StickToBottom tracks it */}
-        {dealBrief && !briefLoading && (
-          <div className="mr-auto w-full max-w-[75%] px-1">
-            <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Co-pilot
-            </div>
-            <DealBriefCard brief={dealBrief} />
-          </div>
-        )}
-
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
+  );
+}
+
+function TalkingPointsMessage({ brief }: { brief: DealBrief }) {
+  return (
+    <div className="mr-auto w-full max-w-[75%] px-1">
+      <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Co-pilot
+      </div>
+      <DealBriefCard brief={brief} />
+    </div>
   );
 }
 

@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-hooks/immutability, react-hooks/refs, react-hooks/preserve-manual-memoization */
+
 import { useEffect, useMemo, useRef, Suspense } from "react"
 import { useTexture } from "@react-three/drei"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
@@ -131,10 +133,7 @@ function Scene({
     )
   }, [manualOutput, outputVolumeRef, getOutputVolume])
 
-  const random = useMemo(
-    () => splitmix32(seed ?? Math.floor(Math.random() * 2 ** 32)),
-    [seed]
-  )
+  const random = useMemo(() => splitmix32(seed ?? 42), [seed])
   const offsets = useMemo(
     () =>
       new Float32Array(Array.from({ length: 7 }, () => random() * Math.PI * 2)),

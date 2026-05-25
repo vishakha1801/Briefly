@@ -24,6 +24,12 @@ function speakTTS(text: string): Promise<void> {
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text.trim());
     utt.rate = 1.05;
+    // Prefer a female English voice when available.
+    const voices = window.speechSynthesis.getVoices();
+    const female = voices.find((v) =>
+      /Samantha|Victoria|Karen|Moira|Fiona|Ava|Zira|Susan|Jenny|Emma/i.test(v.name) && v.lang.startsWith("en")
+    ) ?? voices.find((v) => v.lang.startsWith("en-"));
+    if (female) utt.voice = female;
     utt.onend = () => resolve();
     utt.onerror = () => resolve();
     window.speechSynthesis.speak(utt);
@@ -323,7 +329,12 @@ export function useAgent(sessionId: string) {
     store.setActivity("speaking");
     store.addAgentTurn(text);
 
-    const voiceActive = store.status === "live" && (store.handsFree || store.voiceMode === "ptt");
+    // Only use browser TTS in simulation mode. When Realtime is active the
+    // WebRTC audio track is the sole output; calling speakTTS would double-voice.
+    const voiceActive =
+      store.mode !== "realtime" &&
+      store.status === "live" &&
+      (store.handsFree || store.voiceMode === "ptt");
     if (voiceActive) {
       await speakTTS(text);
     } else {
@@ -558,33 +569,34 @@ export function useAgent(sessionId: string) {
   );
 
   /**
-   * Deal Brief — turn customer context + transcripts + notes/tasks into a
-   * one-screen pre-call briefing, shown in the center workspace. Runs the
+   * Talking points — turn customer context + transcripts + notes/tasks into a
+   * one-screen pre-call prep card, shown in the center workspace. Runs the
    * context tools (visible in the action feed) before generating.
    */
   const dealBrief = useCallback(async () => {
     const store = useAgentStore.getState();
-    const customerId = await resolveCustomer();
-    if (!customerId) {
-      toast.message("Pick a customer first", {
-        description: "Choose who to brief in the context chip.",
-      });
-      await sayAgent("Who should I brief you on? Pick a customer up top.");
-      return;
-    }
     store.setBriefLoading(true);
-    store.setCenterView("transcript");
     store.setActivity("thinking");
-    await Promise.all([
-      runTool("get_customer_history", { customerId }),
-      runTool("get_call_context", { customerId }),
-    ]);
+
     try {
+      const customerId = await resolveCustomer();
+      if (!customerId) {
+        toast.message("Pick a customer first", {
+          description: "Choose who to brief in the context chip.",
+        });
+        await sayAgent("Who should I brief you on? Pick a customer up top.");
+        return;
+      }
+
+      store.setCenterView("transcript");
+      await Promise.all([
+        runTool("get_customer_history", { customerId }),
+        runTool("get_call_context", { customerId }),
+      ]);
+
       const res = await api.generateBrief(customerId);
       if ("insufficientContext" in res) {
-        store.setBriefLoading(false);
         store.setCenterView("transcript");
-        store.setActivity("idle");
         store.setBriefNeedsContext(true);
         await sayAgent(
           "No call context yet — use the suggestions below the button to add some first."
@@ -593,18 +605,20 @@ export function useAgent(sessionId: string) {
       }
       store.setBriefNeedsContext(false);
       store.setDealBrief(res);
-      store.setBriefLoading(false);
       await sayAgent(`Here's your brief on ${res.customerName}. ${res.recommendedNextStep}`);
     } catch {
       store.setBriefLoading(false);
       store.setCenterView("transcript");
-      store.setActivity("idle");
       toast.error("Couldn't generate the brief");
+    } finally {
+      const latest = useAgentStore.getState();
+      latest.setBriefLoading(false);
+      latest.setActivity("idle");
     }
   }, [resolveCustomer, runTool, sayAgent]);
   useEffect(() => { dealBriefRef.current = dealBrief; }, [dealBrief]);
 
-  /** Create a follow-up task directly (used by the Deal Brief card buttons). */
+  /** Create a follow-up task directly from suggested next steps. */
   const createFollowUp = useCallback(
     async (title: string) => {
       const customerId = await resolveCustomer();
@@ -721,6 +735,8 @@ export function useAgent(sessionId: string) {
       rec.interimResults = true;
       rec.lang = "en-US";
       rec.onresult = (e) => {
+        // Recap dictation owns the mic — don't touch the chat input draft.
+        if (useAgentStore.getState().activeCaptureMode === "recap") return;
         let out = "";
         for (let i = 0; i < e.results.length; i++) {
           out += e.results[i][0].transcript;
@@ -729,6 +745,11 @@ export function useAgent(sessionId: string) {
       };
       rec.onend = () => {
         const store = useAgentStore.getState();
+        // If recap dictation stole the mic, discard this utterance entirely.
+        if (store.activeCaptureMode === "recap") {
+          speechRef.current = null;
+          return;
+        }
         const finalText = store.inputDraft.trim();
         if (finalText) {
           store.setInputDraft("");
@@ -765,6 +786,22 @@ export function useAgent(sessionId: string) {
 
     return makeRec();
   }, []);
+
+  // Abort chat recognition when recap dictation starts; resume when it ends.
+  const activeCaptureMode = useAgentStore((s) => s.activeCaptureMode);
+  useEffect(() => {
+    if (activeCaptureMode === "recap") {
+      if (speechRef.current) {
+        speechRef.current.abort();
+        speechRef.current = null;
+      }
+    } else {
+      // "recap" → null: attempt to resume hands-free chat after the recap rec closes.
+      const timer = window.setTimeout(() => resumeHandsFreeRef.current(), 350);
+      return () => window.clearTimeout(timer);
+    }
+  }, [activeCaptureMode]);
+
   useEffect(() => {
     resumeHandsFreeRef.current = () => {
       const store = useAgentStore.getState();
@@ -772,6 +809,7 @@ export function useAgent(sessionId: string) {
         !store.handsFree ||
         store.status !== "live" ||
         store.voiceMode !== "continuous" ||
+        store.activeCaptureMode === "recap" ||
         speechRef.current
       ) {
         return;
@@ -834,17 +872,17 @@ export function useAgent(sessionId: string) {
             clearRealtimeFallback();
             useAgentStore.getState().addAgentTurn(t);
             if (!hasAudio) {
-              // Text-only response — use browser TTS when in voice mode,
-              // then resume hands-free after the utterance ends.
-              const store = useAgentStore.getState();
-              if (store.handsFree || store.voiceMode === "ptt") {
+              // hasAudio=false means either no audio from the server OR the browser
+              // audio element failed to start (autoplay blocked). Fall back to TTS.
+              window.setTimeout(() => {
+                if (sessionRef.current?.audioPlayable) return;
                 void speakTTS(t).then(() => {
                   useAgentStore.getState().setActivity("idle");
                   resumeHandsFreeRef.current();
                 });
-              }
+              }, 350);
             }
-            // If hasAudio, onAudioDone handles idle + hands-free resume.
+            // hasAudio=true: WebRTC audio is confirmed playing; onAudioDone handles resume.
           },
           onAudioDone: () => {
             clearRealtimeFallback();
@@ -860,8 +898,16 @@ export function useAgent(sessionId: string) {
               const store = useAgentStore.getState();
               store.setActivity("responding");
               store.addAgentTurn(fallback);
-              store.setActivity("idle");
-              resumeHandsFreeRef.current();
+              // If Realtime didn't speak the tool result, use TTS as fallback.
+              if (!sessionRef.current?.audioPlayable) {
+                void speakTTS(fallback).then(() => {
+                  useAgentStore.getState().setActivity("idle");
+                  resumeHandsFreeRef.current();
+                });
+              } else {
+                store.setActivity("idle");
+                resumeHandsFreeRef.current();
+              }
               realtimeFallbackTimerRef.current = null;
             }, FINAL_FALLBACK_DELAY);
             return result;
@@ -896,8 +942,9 @@ export function useAgent(sessionId: string) {
               "Allow mic access in your browser, then tap to start again. Using demo mode for now.",
           });
         } else {
-          toast.message("Voice unavailable — continue with text.", {
-            description: "Live speech needs mic access (and OPENAI_API_KEY).",
+          const detail = msg ? `: ${msg}` : "";
+          toast.message("Voice unavailable — using text mode.", {
+            description: `Realtime connection failed${detail}. Check that OPENAI_API_KEY is set.`,
           });
         }
         await startSimulation();
