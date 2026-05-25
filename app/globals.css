@@ -1,26 +1,489 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Briefly brand custom theme mapping */
+  --color-deep-indigo: var(--deep-indigo);
+  --color-navy: var(--navy);
+  --color-periwinkle: var(--periwinkle);
+  --color-cyan-accent: var(--cyan-accent);
+  --color-bg-tint: var(--bg-tint);
+
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-hanken);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-hanken);
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-2xl: 20px;
+
+  --ease-out-custom: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-custom: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer-custom: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Premium dark — deep indigo/violet, dark-only. */
+:root,
+.dark {
+  --ease-out-custom: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-custom: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer-custom: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --background: oklch(0.985 0.003 273.6);
+  --foreground: oklch(0.18 0.012 273.6);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.012 273.6);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.012 273.6);
+
+  --primary: oklch(0.22 0.015 273.6);
+  --primary-foreground: oklch(0.99 0.002 273.6);
+
+  --secondary: oklch(0.95 0.005 273.6);
+  --secondary-foreground: oklch(0.22 0.015 273.6);
+
+  --muted: oklch(0.95 0.005 273.6);
+  --muted-foreground: oklch(0.52 0.01 273.6);
+
+  --accent: oklch(0.92 0.008 273.6);
+  --accent-foreground: oklch(0.22 0.015 273.6);
+
+  --destructive: oklch(0.60 0.18 20);
+
+  --border: oklch(0.91 0.006 273.6);
+  --input: oklch(0.91 0.006 273.6);
+  --ring: oklch(0.564 0.283 273.6);
+
+  --chart-1: oklch(0.72 0.16 330);
+  --chart-2: oklch(0.7 0.16 300);
+  --chart-3: oklch(0.68 0.15 265);
+  --chart-4: oklch(0.74 0.13 200);
+  --chart-5: oklch(0.78 0.14 160);
+
+  --brand: oklch(0.564 0.283 273.6);
+  --brand-foreground: oklch(0.99 0.002 273.6);
+
+  /* Briefly brand custom theme values */
+  --deep-indigo: oklch(0.42 0.29 273.6); /* #1E2BCB */
+  --navy: oklch(0.20 0.12 273.6); /* #10143F */
+  --periwinkle: oklch(0.78 0.11 273.6); /* #AEB7FF */
+  --cyan-accent: oklch(0.84 0.16 200); /* #5ED7FF */
+  --bg-tint: oklch(0.97 0.01 273.6); /* #F5F7FF */
+
+  /* Iridescent orb stops (brightened for warm light mode) */
+  --orb-1: oklch(0.68 0.16 340); /* soft rose-magenta */
+  --orb-2: oklch(0.62 0.16 295); /* soft indigo-violet */
+  --orb-3: oklch(0.65 0.14 273.6); /* soft ocean-blue */
+  --orb-4: oklch(0.72 0.12 190); /* soft seafoam-cyan */
+
+  --grain-noise-svg: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='brieflyNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0.28'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23brieflyNoise)'/%3E%3C/svg%3E");
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    background-color: oklch(0.963 0.009 273.6); /* pale indigo base */
+    color: oklch(0.18 0.012 273.6);
+    background-image:
+      radial-gradient(ellipse at 14% 10%, oklch(0.564 0.283 273.6 / 0.12) 0%, transparent 42%),  /* brand bloom top-left */
+      radial-gradient(ellipse at 86% 90%, oklch(0.78 0.11 273.6 / 0.16) 0%, transparent 48%),   /* periwinkle warmth bottom-right */
+      radial-gradient(ellipse at 50% 36%, oklch(0.564 0.283 273.6 / 0.09) 0%, oklch(0.78 0.11 273.6 / 0.05) 32%, transparent 55%), /* center orb bloom */
+      radial-gradient(ellipse at 50% 96%, oklch(0.564 0.283 273.6 / 0.09) 0%, transparent 36%); /* bottom command bar bloom */
+    background-attachment: fixed;
+    position: relative;
+  }
+  ::selection {
+    background: oklch(0.74 0.16 273.6 / 0.35);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .ease-out-custom {
+    transition-timing-function: var(--ease-out-custom);
+    animation-timing-function: var(--ease-out-custom);
+  }
+  .ease-in-out-custom {
+    transition-timing-function: var(--ease-in-out-custom);
+    animation-timing-function: var(--ease-in-out-custom);
+  }
+  .ease-drawer-custom {
+    transition-timing-function: var(--ease-drawer-custom);
+    animation-timing-function: var(--ease-drawer-custom);
+  }
+
+  .font-display {
+    font-family: var(--font-display), var(--font-sans);
+  }
+
+  .grain-bg {
+    position: relative;
+  }
+  .grain-bg::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    background-image: var(--grain-noise-svg);
+    background-size: 220px 220px;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
+  }
+  :where(.grain-bg > *) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .grain-overlay,
+  .glass-grain,
+  .gradient-grain {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .grain-overlay::after,
+  .glass-grain::after,
+  .gradient-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: var(--grain-noise-svg);
+    background-size: 180px 180px;
+    opacity: var(--grain-opacity, 0.045);
+    mix-blend-mode: overlay;
+  }
+  :where(.grain-overlay > *, .glass-grain > *, .gradient-grain > *) {
+    position: relative;
+    z-index: 1;
+  }
+  .glass-grain {
+    --grain-opacity: 0.055;
+  }
+  .gradient-grain {
+    --grain-opacity: 0.055;
+  }
+
+  /* Restrained Grainy Glassmorphism Visual System */
+  .glass-panel {
+    background: oklch(1 0 0 / 0.55);
+    backdrop-filter: blur(24px) saturate(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(1.1);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.08);
+    box-shadow: 0 8px 32px 0 oklch(0.564 0.283 273.6 / 0.02);
+  }
+
+  .glass-card {
+    background: oklch(1 0 0 / 0.35);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.06);
+    box-shadow: 0 4px 20px 0 oklch(0.564 0.283 273.6 / 0.02);
+    transition: background-color 160ms var(--ease-out-custom), border-color 160ms var(--ease-out-custom), box-shadow 160ms var(--ease-out-custom), transform 160ms var(--ease-out-custom);
+  }
+  .glass-card:hover {
+    background: oklch(1 0 0 / 0.45);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.12);
+    box-shadow: 0 6px 24px 0 oklch(0.564 0.283 273.6 / 0.04);
+  }
+
+  .glass-chip {
+    background: oklch(1 0 0 / 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.08);
+    box-shadow: 0 2px 10px 0 oklch(0.564 0.283 273.6 / 0.02);
+    transition: background-color 160ms var(--ease-out-custom), border-color 160ms var(--ease-out-custom), box-shadow 160ms var(--ease-out-custom), transform 160ms var(--ease-out-custom);
+  }
+  .glass-chip:hover {
+    background: oklch(1 0 0 / 0.55);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.16);
+    box-shadow: 0 4px 12px 0 oklch(0.564 0.283 273.6 / 0.04);
+  }
+
+  .glass-chip-primary {
+    background: oklch(0.564 0.283 273.6 / 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.4);
+    color: oklch(0.99 0.002 273.6);
+    box-shadow: 0 4px 15px 0 oklch(0.564 0.283 273.6 / 0.2);
+    transition: background-color 160ms var(--ease-out-custom), border-color 160ms var(--ease-out-custom), box-shadow 160ms var(--ease-out-custom), transform 160ms var(--ease-out-custom);
+  }
+  .glass-chip-primary:hover {
+    background: oklch(0.564 0.283 273.6 / 0.95);
+    box-shadow: 0 6px 18px 0 oklch(0.564 0.283 273.6 / 0.35);
+  }
+
+  .glass-navbar {
+    background: oklch(1 0 0 / 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid oklch(0.564 0.283 273.6 / 0.08);
+    box-shadow: 0 2px 20px 0 oklch(0.564 0.283 273.6 / 0.03);
+  }
+
+  .glass-command-bar {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.40) 0%,
+      rgba(232, 236, 255, 0.54) 100%
+    );
+    backdrop-filter: blur(28px) saturate(1.15);
+    -webkit-backdrop-filter: blur(28px) saturate(1.15);
+    /* Top border only — glowing divider line */
+    border-top: 1px solid rgba(59, 73, 234, 0.16);
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    box-shadow:
+      /* upward ambient glow from the command bar */
+      0 -12px 40px rgba(59, 73, 234, 0.07),
+      0 -4px 16px rgba(174, 183, 255, 0.12),
+      /* inner highlight line at the very top */
+      inset 0 1px 0 rgba(255, 255, 255, 0.60),
+      /* faint inner tint bloom */
+      inset 0 0 28px rgba(174, 183, 255, 0.06);
+  }
+
+  .glass-elevated {
+    background: oklch(1 0 0 / 0.75);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.18);
+    box-shadow: 0 20px 50px 0 oklch(0.2 0.12 273.6 / 0.12);
+  }
+
+  /* Support legacy class hooks mapping to new system */
+  .glass {
+    background: oklch(1 0 0 / 0.45);
+    backdrop-filter: blur(24px) saturate(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(1.1);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.08);
+    box-shadow: 0 8px 32px 0 oklch(0.564 0.283 273.6 / 0.04);
+  }
+  .glass-strong {
+    background: oklch(1 0 0 / 0.75);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid oklch(0.564 0.283 273.6 / 0.18);
+    box-shadow: 0 20px 50px 0 oklch(0.2 0.12 273.6 / 0.12);
+  }
+
+  /* Grainy glass: every glass surface gets a fine noise layer baked in. */
+  .glass,
+  .glass-panel,
+  .glass-card,
+  .glass-chip,
+  .glass-chip-primary,
+  .glass-navbar,
+  .glass-command-bar,
+  .glass-elevated,
+  .glass-strong {
+    isolation: isolate;
+  }
+  /*
+   * position: relative is needed so the ::after grain pseudo-element is
+   * contained inside the glass surface. :where() gives this rule ZERO
+   * specificity so any explicit position class (fixed, absolute, sticky)
+   * on the same element wins the cascade without needing !important.
+   */
+  :where(
+    .glass,
+    .glass-panel,
+    .glass-card,
+    .glass-chip,
+    .glass-chip-primary,
+    .glass-navbar,
+    .glass-command-bar,
+    .glass-elevated,
+    .glass-strong
+  ) {
+    position: relative;
+  }
+  .glass::after,
+  .glass-panel::after,
+  .glass-card::after,
+  .glass-chip::after,
+  .glass-chip-primary::after,
+  .glass-navbar::after,
+  .glass-command-bar::after,
+  .glass-elevated::after,
+  .glass-strong::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: var(--grain-noise-svg);
+    background-size: 180px 180px;
+    opacity: 0.045;
+    mix-blend-mode: overlay;
+  }
+  /* Keep real content above the grain layer. :where() gives (0,0,0) specificity so
+     Tailwind's absolute/fixed utilities on children always win. */
+  :where(
+    .glass > *,
+    .glass-panel > *,
+    .glass-card > *,
+    .glass-chip > *,
+    .glass-chip-primary > *,
+    .glass-navbar > *,
+    .glass-command-bar > *,
+    .glass-elevated > *,
+    .glass-strong > *
+  ) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      var(--orb-1),
+      var(--orb-2) 40%,
+      var(--orb-3) 70%,
+      var(--orb-4)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Low-confidence transcript words (warm light-mode amber). */
+  .lowconf {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    text-decoration-color: oklch(0.7 0.12 60 / 0.85);
+  }
+
+  /* Calm pulsing dot. */
+  .live-dot {
+    position: relative;
+  }
+  .live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.5;
+    animation: live-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes live-ping {
+    0% { transform: scale(1); opacity: 0.5; }
+    70%, 100% { transform: scale(2.6); opacity: 0; }
+  }
+
+  /* Slim scrollbar */
+  .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.12);
+    border-radius: 9999px;
+  }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  /* Logo lockup */
+  .logo-group {
+    cursor: default;
+    user-select: none;
+  }
+
+  /*
+   * Hover: the SVG rotates gently. Because the specular highlight gradient is
+   * anchored at (9, 7) in userSpaceOnUse coords, rotating the SVG physically
+   * drifts that highlight across the sphere — genuine inner-light movement,
+   * no overlay needed.
+   */
+  .logo-mark {
+    filter: drop-shadow(0 1px 2px rgba(59, 73, 234, 0.14));
+    transition:
+      transform 3.5s cubic-bezier(0.23, 1, 0.32, 1),
+      filter 3.5s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .logo-group:hover .logo-mark {
+    transform: rotate(12deg) scale(1.06);
+    filter:
+      drop-shadow(0 0 7px rgba(59, 73, 234, 0.28))
+      drop-shadow(0 0 18px rgba(111, 123, 255, 0.14));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-mark { transition: filter 0.2s ease; }
+    .logo-group:hover .logo-mark { transform: none; }
+  }
+}
+
+/* Orb animation keyframes */
+@keyframes orb-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes orb-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+@keyframes orb-float {
+  0%, 100% { transform: translateY(-1.5%) scale(1); }
+  50% { transform: translateY(1.5%) scale(1.015); }
+}
+@keyframes orb-breathe {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+@keyframes halo-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.18); opacity: 0.9; }
+}
+
+/* Hide the floating dev tool button with id "next-logo" from the viewport */
+#next-logo {
+  display: none !important;
 }

@@ -1,65 +1,296 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { ListIcon } from "lucide-react";
+import { OrbStage } from "@/components/voice/orb-stage";
+import { CallRecap } from "@/components/voice/call-recap";
+import { PostCallNotes } from "@/components/voice/post-call-notes";
+import { CommandBar } from "@/components/voice/command-bar";
+import { ContextChip } from "@/components/voice/context-chip";
+import { ContextPrompts } from "@/components/voice/context-prompts";
+import { LiveTranscript } from "@/components/voice/live-transcript";
+import { RightSidebar } from "@/components/voice/right-sidebar";
+import { ImportCallModal } from "@/components/voice/import-call-modal";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useAgent } from "@/lib/use-agent";
+import { useAgentStore } from "@/lib/agent-store";
+import { useCustomer, useIsDesktop } from "@/lib/hooks";
+import { newSessionId } from "@/lib/session";
+import { cn } from "@/lib/utils";
+
+export default function VoiceHome() {
+  const existing = useAgentStore.getState().sessionId;
+  const [sessionId] = useState(() => existing ?? newSessionId());
+  const agent = useAgent(sessionId);
+  const isDesktop = useIsDesktop();
+  const [importOpen, setImportOpen] = useState(false);
+
+  const status = useAgentStore((s) => s.status);
+  const voiceMode = useAgentStore((s) => s.voiceMode);
+  const centerView = useAgentStore((s) => s.centerView);
+  const selectedCustomerId = useAgentStore((s) => s.selectedCustomerId);
+  const actionCount = useAgentStore((s) => s.actions.length);
+  const { data: customer } = useCustomer(selectedCustomerId ?? "");
+
+  const live = status === "live";
+  const connecting = status === "connecting";
+
+  // Spacebar PTT: hold to record, release to send — desktop only.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== "Space" || e.repeat) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.tagName === "SELECT" ||
+          el.tagName === "BUTTON" ||
+          el.isContentEditable)
+      )
+        return;
+      const store = useAgentStore.getState();
+      if (store.voiceMode !== "ptt" || store.status !== "live") return;
+      e.preventDefault();
+      agent.pttStart();
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.code !== "Space") return;
+      const store = useAgentStore.getState();
+      if (store.voiceMode !== "ptt" || store.status !== "live") return;
+      agent.pttStop();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [agent.pttStart, agent.pttStop]);
+
+  function onMainButton() {
+    if (!live) {
+      agent.startRealtime(customer ?? null);
+      return;
+    }
+    if (voiceMode === "continuous") agent.toggleMic();
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      <ImportCallModal open={importOpen} onOpenChange={setImportOpen} />
+
+      <main className="relative flex h-dvh w-full flex-col overflow-hidden">
+        {/* ── Ambient bloom — atmospheric glow behind the orb ────── */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-[45%] top-0 -translate-x-1/2"
+          style={{
+            width: "700px",
+            height: "520px",
+            borderRadius: "50%",
+            background:
+              "radial-gradient(ellipse at 50% 22%, rgba(59,73,234,0.11) 0%, rgba(174,183,255,0.06) 40%, transparent 66%)",
+            filter: "blur(64px)",
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+
+        {/* ── Top bar ─────────────────────────────────────────────── */}
+        <header className="glass-navbar flex shrink-0 items-center justify-between gap-3 px-4 py-2.5 sm:px-6 z-10">
+          <div className="logo-group flex items-center gap-2.5">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 32 32"
+              fill="none"
+              className="logo-mark size-7 shrink-0"
+              aria-hidden="true"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+              <defs>
+                <radialGradient id="lm-base" cx="11" cy="8" r="24" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#5D6AF2" />
+                  <stop offset="42%" stopColor="#3B49EA" />
+                  <stop offset="100%" stopColor="#090E2E" />
+                </radialGradient>
+                <radialGradient id="lm-spec" cx="9" cy="7" r="11" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="white" stopOpacity="0.52" />
+                  <stop offset="100%" stopColor="white" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="lm-amb" cx="22" cy="24" r="10" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#AEB7FF" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#AEB7FF" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id="lm-rim" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#5ED7FF" stopOpacity="0.65" />
+                  <stop offset="48%" stopColor="#AEB7FF" stopOpacity="0.42" />
+                  <stop offset="100%" stopColor="#3B49EA" stopOpacity="0.08" />
+                </linearGradient>
+              </defs>
+              <circle cx="16" cy="16" r="14.5" fill="url(#lm-base)" />
+              <circle cx="16" cy="16" r="14.5" fill="url(#lm-spec)" />
+              <circle cx="16" cy="16" r="14.5" fill="url(#lm-amb)" />
+              <circle cx="16" cy="16" r="13.8" stroke="url(#lm-rim)" strokeWidth="1.2" fill="none" />
+            </svg>
+            <span className="font-heading text-[17px] font-semibold tracking-[0.041em] text-foreground">
+              Briefly
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ContextChip />
+            {!isDesktop && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative rounded-full"
+                    aria-label="Customer and actions"
+                  >
+                    <ListIcon className="size-4" />
+                    {actionCount > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
+                        {actionCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="glass-strong w-[330px] p-0">
+                  <SheetHeader className="px-4 pb-0 pt-4">
+                    <SheetTitle className="text-sm">
+                      Customer &amp; Actions
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex h-full flex-col px-3 pb-4 pt-3">
+                    <RightSidebar />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+          </div>
+        </header>
+
+        {/* ── Body ────────────────────────────────────────────────── */}
+        <div className="flex min-h-0 flex-1">
+          {/* ── Center workspace — one cohesive voice session ──── */}
+          <section className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 pb-3 pt-2 sm:px-5 sm:pt-2">
+            {/* Compact orb + status */}
+            <OrbStage size={isDesktop ? 110 : 92} />
+
+            {/* Quick actions */}
+            <ContextPrompts
+              onDealBrief={agent.dealBrief}
+              onImportTranscript={() => setImportOpen(true)}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+            <div className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg">
+              {/* Workspace Navigation Bar */}
+              <div className="flex shrink-0 flex-col gap-1.5 border-b border-brand/8 bg-white/25 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+                {customer?.name && (
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {customer.name}
+                  </span>
+                )}
+                <div className="grid w-full grid-cols-3 gap-0.5 rounded-sm border border-brand/10 bg-brand/5 p-0.5 sm:flex sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => useAgentStore.getState().setCenterView("transcript")}
+                    className={cn(
+                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      centerView === "transcript"
+                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
+                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
+                    )}
+                  >
+                    Conversation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => useAgentStore.getState().setCenterView("recap")}
+                    className={cn(
+                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      centerView === "recap"
+                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
+                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
+                    )}
+                  >
+                    Call recap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => useAgentStore.getState().setCenterView("notes")}
+                    className={cn(
+                      "h-7 rounded-xs text-center text-xs font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
+                      centerView === "notes"
+                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
+                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
+                    )}
+                  >
+                    Post-call notes
+                  </button>
+                </div>
+              </div>
+
+              {/* Main content view */}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {centerView === "recap" ? (
+                  <CallRecap
+                    onImportTranscript={() => setImportOpen(true)}
+                    onGeneratePostCallNotes={agent.captureNote}
+                    onCreateFollowUp={agent.createFollowUp}
+                  />
+                ) : centerView === "notes" ? (
+                  <PostCallNotes
+                    onSaveNote={agent.savePostCallNote}
+                    onUpdateDraft={agent.updatePostCallDraft}
+                    onCreateFollowUp={agent.createFollowUp}
+                  />
+                ) : (
+                  <LiveTranscript
+                    live={live}
+                    onEditTurn={agent.editTurn}
+                  />
+                )}
+              </div>
+
+              {/* Command Bar */}
+              <CommandBar
+                live={live}
+                connecting={connecting}
+                onMic={onMainButton}
+                onHoldStart={agent.pttStart}
+                onHoldEnd={agent.pttStop}
+                onSend={agent.sendRep}
+                onEnd={agent.end}
+                onInterrupt={agent.interrupt}
+                onSetVoiceMode={agent.setVoiceMode}
+              />
+            </div>
+          </section>
+
+          {/* ── Right sidebar (desktop only) ───────────────────── */}
+          {isDesktop && (
+            <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-brand/8 bg-white/20 px-4 py-4 backdrop-blur-xl xl:w-[400px]">
+              <div className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Context &amp; Actions
+              </div>
+              <div className="min-h-0 flex-1">
+                <RightSidebar />
+              </div>
+            </aside>
+          )}
         </div>
       </main>
-    </div>
+
+      {/* Hidden sink for the agent's voice in realtime mode. */}
+      {/* autoPlay is required — the track arrives outside a user-gesture context. */}
+      <audio id="briefly-agent-audio" autoPlay className="hidden" />
+    </>
   );
 }
