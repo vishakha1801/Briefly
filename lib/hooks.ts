@@ -57,3 +57,20 @@ export function useIsDesktop() {
   }, []);
   return isDesktop;
 }
+
+export function useOrbSize() {
+  const [size, setSize] = useState(113);
+  useEffect(() => {
+    function update() {
+      const w = window.innerWidth;
+      if (w >= 1536) setSize(190);       // 2xl — ~29% above baseline
+      else if (w >= 1280) setSize(176);  // xl  — ~20% above baseline
+      else if (w >= 1024) setSize(162);  // lg  — ~10% above baseline
+      else setSize(113);
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return size;
+}

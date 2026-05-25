@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAgent } from "@/lib/use-agent";
 import { useAgentStore } from "@/lib/agent-store";
-import { useCustomer, useIsDesktop } from "@/lib/hooks";
+import { useCustomer, useIsDesktop, useOrbSize } from "@/lib/hooks";
 import { newSessionId } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +40,7 @@ export default function VoiceHome() {
   const agent = useAgent(sessionId);
   const { pttStart, pttStop } = agent;
   const isDesktop = useIsDesktop();
+  const orbSize = useOrbSize();
   const [importOpen, setImportOpen] = useState(false);
 
   const status = useAgentStore((s) => s.status);
@@ -211,7 +212,7 @@ export default function VoiceHome() {
           {/* ── Center workspace — one cohesive voice session ──── */}
           <section className="flex min-w-0 flex-1 flex-col gap-4 px-3 pb-3 pt-3 sm:px-5 sm:pt-3">
             {/* Orb */}
-            <OrbStage size={isDesktop ? 147 : 113} />
+            <OrbStage size={orbSize} />
 
             {/* Quick actions */}
             <ContextPrompts
