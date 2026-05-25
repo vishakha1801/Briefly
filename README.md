@@ -8,6 +8,28 @@ The app is intentionally focused on one reviewer-ready flow:
 Select or create customer -> add call recap -> generate post-call notes -> save note -> create follow-up -> inspect Actions
 ```
 
+## Design Decisions 🪼
+
+I did not want Briefly to feel like another generic ChatGPT-wrapper dashboard. As a design engineer, I believe every interaction—from where context lives to when the agent speaks—should feel highly intentional. ✦
+
+### Keeping the Conversation Clean 🛰️
+Instead of dumping messy, multi-paragraph call transcripts directly into the chat timeline, I created a dedicated **Call recap** tab. It keeps the primary co-pilot chat focused and readable, acting as a clean workspace while the agent references the recap in the background as raw source material. 
+
+Similarly, **Talking points** are not just a random chat gimmick; they are structured as high-density pre-call prep cards. Grabbing talking points is a deliberate action before your next customer meeting, cleanly synthesizing previous call summaries, stored notes, and open tasks.
+
+### Trust, Correction, and Voice Affordances 🌙
+Voice is inherently messy, so I designed Briefly to support human correction:
+- **Editable transcripts**: Reps can instantly edit previous messages or speech transcripts to correct what the system heard, triggering a fresh turn and assistant response.
+- **Microphone affordances**: Briefly supports **Push-to-talk** (for quick, non-disruptive lookups while you're on a call) and **Hands-free** (for continuous voice-first co-piloting). 
+- **Active Interruptions**: If the co-pilot talks too much, you can tap the mic to interrupt and stop it mid-sentence. It's a true voice-product affordance, not just a static playback bar.
+- **The Voice Orb**: The central orb is more than pretty motion design. It communicates current voice states in real-time: idle, listening, thinking, and speaking.
+
+### Under the Hood Polish
+- **Fuzzy Customer Search**: Customer lookup supports fuzzy spelling checks, meaning the co-pilot will still pull up the right profile even if you slightly mispronounce or misremember a customer's name.
+- **Graceful Fallbacks**: If there isn't enough call context to generate notes or talking points, the app doesn't crash or throw a dead error; instead, it dynamically guides you with friendly action links to record, import, or write context.
+- **WebRTC for Voice**: Direct WebRTC streaming over the OpenAI Realtime API gives Briefly ultra-low-latency audio streaming, echo cancellation, and highly natural conversational rhythms.
+- **Slick Visuals & Layouts**: I designed a distinct glassmorphic visual system with soft pastels, blurs, and premium dark/light cards that feel vastly superior to a default shadcn layout. Desktop and mobile are treated as distinct layouts—never just squeezed versions of the same screen.
+
 ## Stack
 
 - Next.js 16 App Router
