@@ -234,6 +234,19 @@ declare global {
   }
 }
 
+async function canAccessMic(): Promise<boolean> {
+  if (typeof window === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return false;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function useAgent(sessionId: string) {
   const sessionRef = useRef<RealtimeSession | null>(null);
   const speechRef = useRef<SpeechRec | null>(null);
@@ -800,9 +813,7 @@ export function useAgent(sessionId: string) {
       }
 
       if (store.mode === "realtime") {
-        sessionRef.current?.setMicMuted(false);
-        store.setActivity("listening");
-        return;
+        sessionRef.current?.setMicMuted(true);
       }
 
       speechRef.current = startHandsFreeRecognition();
@@ -811,15 +822,17 @@ export function useAgent(sessionId: string) {
       }
     };
   }, [startHandsFreeRecognition]);
-
   const startSimulation = useCallback(async () => {
     const store = useAgentStore.getState();
+    const hasMic = await canAccessMic();
+    if (hasMic) {
+      store.setError(null);
+    } else {
+      store.setError("mic-blocked");
+    }
     const wasMicBlocked = store.errorMsg === "mic-blocked";
     store.setMode("simulation");
     store.start();
-    if (!wasMicBlocked) {
-      store.setError(null);
-    }
     store.setActivity("idle");
     if (wasMicBlocked) {
       store.setVoiceMode("ptt");
@@ -837,10 +850,19 @@ export function useAgent(sessionId: string) {
         toast.message("Browser speech not available — use the text box instead.");
     }
   }, [sayAgent, startHandsFreeRecognition]);
-
   const startRealtime = useCallback(
     async (customer: Customer | null) => {
       const store = useAgentStore.getState();
+
+      if (sessionRef.current) {
+        sessionRef.current.close();
+        sessionRef.current = null;
+      }
+      if (speechRef.current) {
+        speechRef.current.abort();
+        speechRef.current = null;
+      }
+
       store.setStatus("connecting");
       store.setError(null);
 
@@ -923,9 +945,10 @@ export function useAgent(sessionId: string) {
         store.start();
         const ptt = store.voiceMode === "ptt";
         store.setHandsFree(!ptt);
-        session.setMicMuted(ptt);
+        session.setMicMuted(true);
         if (!ptt) {
           store.setActivity("listening");
+          speechRef.current = startHandsFreeRecognition();
         }
         toast.success(
           ptt ? "Connected — hold the mic to talk" : "Connected — speak or type"
@@ -1072,9 +1095,8 @@ export function useAgent(sessionId: string) {
     store.setHandsFree(next);
 
     if (store.mode === "realtime") {
-      sessionRef.current?.setMicMuted(!next);
+      sessionRef.current?.setMicMuted(true);
       store.setActivity(next ? "listening" : "idle");
-      return;
     }
 
     if (next) {
@@ -1101,14 +1123,8 @@ export function useAgent(sessionId: string) {
       return;
     }
     if (store.mode === "realtime" && store.status === "live") {
-      if (pttRealtimeMuteTimerRef.current) {
-        window.clearTimeout(pttRealtimeMuteTimerRef.current);
-        pttRealtimeMuteTimerRef.current = null;
-      }
+      sessionRef.current?.setMicMuted(true);
       store.setInputDraft("");
-      store.setActivity("listening");
-      sessionRef.current?.setMicMuted(false);
-      return;
     }
 
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
@@ -1158,15 +1174,7 @@ export function useAgent(sessionId: string) {
       return;
     }
     if (store.mode === "realtime" && store.status === "live") {
-      store.setActivity("transcribing");
-      if (pttRealtimeMuteTimerRef.current) {
-        window.clearTimeout(pttRealtimeMuteTimerRef.current);
-      }
-      pttRealtimeMuteTimerRef.current = window.setTimeout(() => {
-        sessionRef.current?.setMicMuted(true);
-        pttRealtimeMuteTimerRef.current = null;
-      }, 450);
-      return;
+      sessionRef.current?.setMicMuted(true);
     }
 
     pttShouldSendRef.current = true;

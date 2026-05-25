@@ -91,7 +91,8 @@ export default function VoiceHome() {
   }, [pttStart, pttStop]);
 
   function onMainButton() {
-    if (!live) {
+    const store = useAgentStore.getState();
+    if (!live || store.mode === "simulation") {
       agent.startRealtime(customer ?? null);
       return;
     }
