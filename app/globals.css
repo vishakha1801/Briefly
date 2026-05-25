@@ -126,14 +126,9 @@
     @apply font-sans;
   }
   body {
-    background-color: oklch(0.963 0.009 273.6); /* pale indigo base */
+    /* Transparent so the fixed MeshBackground layer shows through as the base. */
+    background-color: transparent;
     color: oklch(0.18 0.012 273.6);
-    background-image:
-      radial-gradient(ellipse at 14% 10%, oklch(0.564 0.283 273.6 / 0.12) 0%, transparent 42%),  /* brand bloom top-left */
-      radial-gradient(ellipse at 86% 90%, oklch(0.78 0.11 273.6 / 0.16) 0%, transparent 48%),   /* periwinkle warmth bottom-right */
-      radial-gradient(ellipse at 50% 36%, oklch(0.564 0.283 273.6 / 0.09) 0%, oklch(0.78 0.11 273.6 / 0.05) 32%, transparent 55%), /* center orb bloom */
-      radial-gradient(ellipse at 50% 96%, oklch(0.564 0.283 273.6 / 0.09) 0%, transparent 36%); /* bottom command bar bloom */
-    background-attachment: fixed;
     position: relative;
   }
   ::selection {
@@ -212,6 +207,28 @@
     --grain-opacity: 0.055;
   }
 
+  /* Orb grain overlay — subtle texture clipped to the orb circle */
+  .orb-grain {
+    position: relative;
+  }
+  .orb-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-image: var(--grain-noise-svg);
+    background-size: 220px 220px;
+    mix-blend-mode: soft-light;
+    opacity: 0.09;
+    pointer-events: none;
+    z-index: 10;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .orb-grain::after {
+      display: none;
+    }
+  }
+
   /* Restrained Grainy Glassmorphism Visual System */
   .glass-panel {
     background: oklch(1 0 0 / 0.55);
@@ -264,7 +281,7 @@
   }
 
   .glass-navbar {
-    background: oklch(1 0 0 / 0.32);
+    background: oklch(1 0 0 / 0.10);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid oklch(0.564 0.283 273.6 / 0.08);

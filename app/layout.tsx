@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { MeshBackground } from "@/components/ui/mesh-background";
 
 export const metadata: Metadata = {
   title: "Briefly",
@@ -18,7 +19,8 @@ export default function RootLayout({
       className="h-full antialiased"
       suppressHydrationWarning
     >
-      <body className="grain-bg min-h-full flex flex-col bg-background text-foreground">
+      <body className="grain-bg min-h-full flex flex-col text-foreground">
+        <MeshBackground />
         <Providers>{children}</Providers>
       </body>
     </html>

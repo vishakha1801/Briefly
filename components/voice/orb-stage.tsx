@@ -32,7 +32,7 @@ export function OrbStage({
 
   return (
     <div className="flex w-full shrink-0 items-center justify-center" style={{ height: size }}>
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className="orb-grain relative shrink-0" style={{ width: size, height: size }}>
         <Orb
           state={state}
           size={orbSize}

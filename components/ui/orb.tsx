@@ -533,7 +533,7 @@ void main() {
     color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 - ringColor * totalRingAlpha);
 
     // Define colours to ramp against greyscale (could increase the amount of colours in the ramp)
-    vec3 color1 = vec3(0.0, 0.0, 0.0); // Black
+    vec3 color1 = vec3(0.063, 0.078, 0.247); // Dark indigo #10143F
     vec3 color2 = uColor1; // Darker Color
     vec3 color3 = uColor2; // Lighter Color
     vec3 color4 = vec3(1.0, 1.0, 1.0); // White
