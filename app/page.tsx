@@ -28,6 +28,11 @@ import { useAgentStore } from "@/lib/agent-store";
 import { useCustomer, useIsDesktop } from "@/lib/hooks";
 import { newSessionId } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function VoiceHome() {
   const existing = useAgentStore.getState().sessionId;
@@ -212,27 +217,50 @@ export default function VoiceHome() {
                   {customer?.name ?? ""}
                 </span>
                 <div className={cn(segmentedControlListClass, "grid-cols-3 sm:ml-auto sm:w-auto")}>
-                  <button
-                    type="button"
-                    onClick={() => useAgentStore.getState().setCenterView("transcript")}
-                    className={segmentedControlButtonClass(centerView === "transcript", "sm:px-3")}
-                  >
-                    Conversation
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => useAgentStore.getState().setCenterView("recap")}
-                    className={segmentedControlButtonClass(centerView === "recap", "sm:px-3")}
-                  >
-                    Call recap
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => useAgentStore.getState().setCenterView("notes")}
-                    className={segmentedControlButtonClass(centerView === "notes", "sm:px-3")}
-                  >
-                    Post-call notes
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => useAgentStore.getState().setCenterView("transcript")}
+                        className={segmentedControlButtonClass(centerView === "transcript", "sm:px-3")}
+                      >
+                        Conversation
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Chat with the copilot about the customer, call, or follow-ups.
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => useAgentStore.getState().setCenterView("recap")}
+                        className={segmentedControlButtonClass(centerView === "recap", "sm:px-3")}
+                      >
+                        Call recap
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Import or add a recap of the last call.
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => useAgentStore.getState().setCenterView("notes")}
+                        className={segmentedControlButtonClass(centerView === "notes", "sm:px-3")}
+                      >
+                        Post-call notes
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Review and save structured notes generated from the call.
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 

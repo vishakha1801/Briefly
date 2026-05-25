@@ -14,7 +14,7 @@ import { cleanQuery, interpret, type AgentIntent } from "./agent-brain";
 import { api } from "./api";
 import { ingestCallRecap } from "./call-recap-ingest";
 import { shortDate } from "./format";
-import type { CallContext, Customer, StructuredNote } from "./types";
+import type { CallContext, Customer, DealBrief, StructuredNote } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -254,6 +254,7 @@ export function useAgent(sessionId: string) {
   const pttRealtimeMuteTimerRef = useRef<number | null>(null);
   const realtimeFallbackTimerRef = useRef<number | null>(null);
   const realtimeFinalAnswerRef = useRef(false);
+  const ignoreNextAgentTextRef = useRef(false);
   const resumeHandsFreeRef = useRef<() => void>(() => {});
   const sendRepRef = useRef<(text: string) => void>(() => {});
   const dealBriefRef = useRef<() => void>(() => {});
@@ -352,7 +353,7 @@ export function useAgent(sessionId: string) {
     [qc]
   );
 
-  const sayAgent = useCallback(async (text: string, gap = 320) => {
+  const sayAgent = useCallback(async (text: string, gap = 320, brief?: DealBrief) => {
     const store = useAgentStore.getState();
     if (isFillerResponse(text)) {
       store.setActivity("thinking");
@@ -363,7 +364,14 @@ export function useAgent(sessionId: string) {
     store.setActivity("responding");
     await wait(gap);
     store.setActivity("speaking");
-    store.addAgentTurn(text);
+    
+    if (brief) {
+      const turn = makeAgentTurn("agent", text);
+      turn.brief = brief;
+      store.addTurn(turn);
+    } else {
+      store.addAgentTurn(text);
+    }
 
     // Only use browser TTS in simulation mode. When Realtime is active the
     // WebRTC audio track is the sole output; calling speakTTS would double-voice.
@@ -573,6 +581,10 @@ export function useAgent(sessionId: string) {
     store.setBriefLoading(true);
     store.setActivity("thinking");
 
+    if (store.mode === "realtime") {
+      ignoreNextAgentTextRef.current = true;
+    }
+
     try {
       const customerId = await resolveCustomer();
       if (!customerId) {
@@ -598,9 +610,17 @@ export function useAgent(sessionId: string) {
         );
         return;
       }
+
+      clearRealtimeFallback();
+      realtimeFinalAnswerRef.current = true;
+
       store.setBriefNeedsContext(false);
       store.setDealBrief(res);
-      await sayAgent(`Here's your brief on ${res.customerName}. ${res.recommendedNextStep}`);
+      await sayAgent(
+        `Here's your brief on ${res.customerName}. ${res.recommendedNextStep}`,
+        320,
+        res
+      );
     } catch {
       store.setBriefLoading(false);
       store.setCenterView("transcript");
@@ -610,7 +630,7 @@ export function useAgent(sessionId: string) {
       latest.setBriefLoading(false);
       latest.setActivity("idle");
     }
-  }, [resolveCustomer, runTool, sayAgent]);
+  }, [resolveCustomer, runTool, sayAgent, clearRealtimeFallback]);
   useEffect(() => { dealBriefRef.current = dealBrief; }, [dealBrief]);
 
   /** Create a follow-up task directly from suggested next steps. */
@@ -754,16 +774,28 @@ export function useAgent(sessionId: string) {
           return;
         }
 
+        speechRef.current = null;
+
         const readyToListen =
           store.handsFree &&
           store.status === "live" &&
           (store.activity === "listening" || store.activity === "idle");
 
         if (readyToListen) {
-          const next = makeRec();
-          if (next) speechRef.current = next;
+          window.setTimeout(() => {
+            const current = useAgentStore.getState();
+            if (
+              current.handsFree &&
+              current.status === "live" &&
+              current.voiceMode === "continuous" &&
+              current.activeCaptureMode !== "recap" &&
+              !speechRef.current
+            ) {
+              const next = makeRec();
+              if (next) speechRef.current = next;
+            }
+          }, 200);
         } else {
-          speechRef.current = null;
           if (store.status !== "live") store.setActivity("idle");
         }
       };
@@ -822,6 +854,19 @@ export function useAgent(sessionId: string) {
       }
     };
   }, [startHandsFreeRecognition]);
+
+  const activity = useAgentStore((s) => s.activity);
+  const handsFree = useAgentStore((s) => s.handsFree);
+  const voiceMode = useAgentStore((s) => s.voiceMode);
+
+  useEffect(() => {
+    if (handsFree && status === "live" && voiceMode === "continuous" && activity === "idle") {
+      const timer = window.setTimeout(() => {
+        resumeHandsFreeRef.current();
+      }, 100);
+      return () => window.clearTimeout(timer);
+    }
+  }, [handsFree, status, voiceMode, activity]);
   const startSimulation = useCallback(async () => {
     const store = useAgentStore.getState();
     const hasMic = await canAccessMic();
@@ -887,6 +932,12 @@ export function useAgent(sessionId: string) {
           },
           onAgentText: (t, hasAudio) => {
             if (isFillerResponse(t)) return;
+            if (ignoreNextAgentTextRef.current) {
+              ignoreNextAgentTextRef.current = false;
+              clearRealtimeFallback();
+              realtimeFinalAnswerRef.current = true;
+              return;
+            }
             clearRealtimeFallback();
             realtimeFinalAnswerRef.current = true;
             useAgentStore.getState().addAgentTurn(t);
@@ -982,95 +1033,26 @@ export function useAgent(sessionId: string) {
     [clearRealtimeFallback, runTool, startSimulation]
   );
 
-  const rerunCorrection = useCallback(
-    async (
-      oldActionId: string,
-      name: RealtimeToolName,
-      correctedText: string,
-      turnId: string
-    ) => {
-      const intent = interpret(correctedText);
-      const customerId = await resolveCustomer(
-        "name" in intent ? intent.name : undefined,
-        correctedText
-      );
-      if (!customerId) return;
-
-      await sayAgent("Let me fix that.");
-      let newId = "";
-      if (name === "create_task" && intent.kind === "task") {
-        const { id, result } = await runTool(
-          "create_task",
-          { customerId, title: intent.title, dueDate: intent.dateText, priority: "med" },
-          turnId
-        );
-        newId = id;
-        const due = (result as { dueDate?: string }).dueDate;
-        await sayAgent(
-          due ? `Updated — reminder set for ${shortDate(due)}.` : "Updated."
-        );
-      } else if (name === "save_note" && intent.kind === "note") {
-        const { id } = await runTool(
-          "save_note",
-          { customerId, rawText: intent.text },
-          turnId
-        );
-        newId = id;
-        await sayAgent("Updated the note.");
-      }
-
-      if (newId) {
-        useAgentStore
-          .getState()
-          .updateAction(oldActionId, { superseded: true, supersededBy: newId });
-      }
-    },
-    [resolveCustomer, runTool, sayAgent]
-  );
-
   const editTurn = useCallback((id: string, newText: string) => {
     const store = useAgentStore.getState();
     const turn = store.transcript.find((t) => t.id === id);
-    store.editTurn(id, newText);
-    if (!turn || (turn.role !== "user" && turn.speaker !== "rep")) return;
-    // No real change → nothing to re-do.
-    if (newText.trim() === turn.originalText.trim()) return;
+    if (!turn) return;
 
-    const now = Date.now();
-    const trigger = [...store.actions]
-      .reverse()
-      .find((a) => a.triggerTurnId === id && !a.superseded && now - a.at < 60_000);
+    const trimmed = newText.trim();
+    // No real change → nothing to do.
+    if (trimmed === turn.originalText.trim()) return;
 
-    // Case 1: the edited turn drove a tool call → redo that tool.
-    if (trigger) {
-      toast.message(`Re-running ${trigger.name} with corrected input`);
-      if (sessionRef.current && store.mode === "realtime") {
-        sessionRef.current.injectSystem(
-          `The rep corrected their earlier message. The corrected version is: "${newText}". Determine if any recent tool calls need to be redone and act accordingly.`
-        );
-        return;
-      }
-      void rerunCorrection(
-        trigger.id,
-        trigger.name as RealtimeToolName,
-        newText,
-        id
-      );
+    if (turn.role !== "user" && turn.speaker !== "rep") {
+      store.editTurn(id, trimmed);
       return;
     }
 
-    // Case 2: no tool was triggered → re-prompt the agent with the correction
-    // so its response reflects what the rep actually meant.
-    toast.message("Re-asking with your correction");
-    if (sessionRef.current && store.mode === "realtime") {
-      sessionRef.current.injectSystem(
-        `The rep corrected their previous message to: "${newText}". Respond to the corrected version.`
-      );
-      return;
-    }
-    void handleIntent(interpret(newText), id, newText);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // 1. Keep original message unchanged, but mark it as edited
+    store.editTurn(id, turn.text, true);
+
+    // 2. Append the edited text as a new user message at the bottom and send it through normal agent flow
+    void sendRep(trimmed);
+  }, [sendRep]);
 
   const seedCorrectionDemo = useCallback(async () => {
     const store = useAgentStore.getState();
@@ -1195,10 +1177,11 @@ export function useAgent(sessionId: string) {
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = "en-US";
+    let transcriptText = "";
     rec.onresult = (e) => {
       let out = "";
       for (let i = 0; i < e.results.length; i++) out += e.results[i][0].transcript;
-      useAgentStore.getState().setInputDraft(out.replace(/\s+/g, " ").trimStart());
+      transcriptText = out.replace(/\s+/g, " ").trimStart();
     };
     rec.onerror = (ev) => {
       if (ev.error !== "no-speech" && ev.error !== "aborted")
@@ -1206,9 +1189,8 @@ export function useAgent(sessionId: string) {
     };
     rec.onend = () => {
       const current = useAgentStore.getState();
-      const text = current.inputDraft.trim();
+      const text = transcriptText.trim();
       if (text) {
-        current.setInputDraft("");
         const customerId = current.selectedCustomerId;
         if (!customerId) {
           toast.error("Select a customer first");
@@ -1257,9 +1239,7 @@ export function useAgent(sessionId: string) {
       } else {
         store.setHandsFree(true);
         if (store.mode === "realtime") {
-          sessionRef.current?.setMicMuted(false);
-          store.setActivity("listening");
-          return;
+          sessionRef.current?.setMicMuted(true);
         }
         speechRef.current = startHandsFreeRecognition();
         if (!speechRef.current)

@@ -43,16 +43,6 @@ export function LiveTranscript({
       at: turn.at,
       turn,
     })),
-    ...(dealBrief && !briefLoading
-      ? [
-          {
-            type: "brief" as const,
-            id: `brief-${dealBrief.customerId}`,
-            at: dealBriefAt ?? Math.max(0, ...transcript.map((turn) => turn.at)),
-            brief: dealBrief,
-          },
-        ]
-      : []),
   ].sort((a, b) => a.at - b.at);
 
   return (
@@ -69,10 +59,10 @@ export function LiveTranscript({
         )}
 
         {timeline.map((item) =>
-          item.type === "turn" ? (
-            <Bubble key={item.id} turn={item.turn} onSave={onEditTurn} />
+          item.turn.brief ? (
+            <TalkingPointsMessage key={item.id} brief={item.turn.brief} />
           ) : (
-            <TalkingPointsMessage key={item.id} brief={item.brief} />
+            <Bubble key={item.id} turn={item.turn} onSave={onEditTurn} />
           )
         )}
 
@@ -260,6 +250,10 @@ function DealBriefCard({ brief }: { brief: DealBrief }) {
           Talking points — {brief.customerName}
         </p>
       </div>
+
+      <p className="text-xs text-white/70 leading-relaxed border-b border-white/5 pb-2">
+        Here is your talking points brief for {brief.customerName} to help guide your next conversation.
+      </p>
 
       <div>
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">

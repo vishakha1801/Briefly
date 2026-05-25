@@ -10,6 +10,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAgentStore, type VoiceMode } from "@/lib/agent-store";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function CommandBar({
   live,
@@ -70,179 +75,237 @@ export function CommandBar({
         <div className="flex items-center gap-1">
           <div className={cn(segmentedControlListClass, "grid-cols-2")}>
             {(["ptt", "continuous"] as const).map((m) => (
-              <button
-                key={m}
-                disabled={isCaptureActive}
-                onClick={() => !isCaptureActive && onSetVoiceMode(m)}
-                className={segmentedControlButtonClass(voiceMode === m)}
-              >
-                {m === "ptt" ? "Push-to-talk" : "Hands-free"}
-              </button>
+              <Tooltip key={m}>
+                <TooltipTrigger asChild>
+                  <button
+                    disabled={isCaptureActive}
+                    onClick={() => !isCaptureActive && onSetVoiceMode(m)}
+                    className={segmentedControlButtonClass(voiceMode === m)}
+                  >
+                    {m === "ptt" ? "Push-to-talk" : "Hands-free"}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {m === "ptt"
+                    ? "Hold to speak for one message"
+                    : "Continuous voice conversation"}
+                </TooltipContent>
+              </Tooltip>
             ))}
           </div>
           {live && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onEnd}
-              aria-label="End session"
-              disabled={isCaptureActive}
-              className="size-7 shrink-0 rounded-sm text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
-            >
-              <PowerIcon className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={onEnd}
+                  aria-label="End session"
+                  disabled={isCaptureActive}
+                  className="size-7 shrink-0 rounded-sm text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
+                >
+                  <PowerIcon className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>End / reset session</TooltipContent>
+            </Tooltip>
           )}
         </div>
 
         {/* Row 2: mic + input + send */}
         <div className="flex items-end gap-1.5">
           {/* Compact mobile mic — 44px, soft shadow, no glow rings */}
-          <button
-            type="button"
-            disabled={isCaptureActive}
-            aria-label={
-              agentSpeaking
-                ? "Interrupt"
-                : live && voiceMode === "ptt"
-                ? "Hold to talk"
-                : live
-                ? "Mic"
-                : "Start"
-            }
-            title={agentSpeaking ? "Interrupt" : undefined}
-            className={cn(
-              "relative grid shrink-0 touch-none select-none place-items-center rounded-full text-white transition-[transform,box-shadow,opacity] duration-160 ease-out-custom active:scale-[0.97] disabled:opacity-40",
-              "size-11",
-              live
-                ? "shadow-[0_1px_6px_rgba(59,73,234,0.18),inset_0_1px_0_rgba(255,255,255,0.14)]"
-                : "shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
-            )}
-            style={{
-              background: live
-                ? "#3B49EA"
-                : "linear-gradient(150deg, var(--primary), oklch(0.18 0.012 250))",
-            }}
-            {...(live && voiceMode === "ptt" && !agentSpeaking && !isCaptureActive
-              ? {
-                  onPointerDown: (e: React.PointerEvent) => {
-                    e.preventDefault();
-                    onHoldStart();
-                  },
-                  onPointerUp: onHoldEnd,
-                  onPointerLeave: onHoldEnd,
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={isCaptureActive}
+                aria-label={
+                  agentSpeaking
+                    ? "Interrupt"
+                    : live && voiceMode === "ptt"
+                    ? "Hold to talk"
+                    : live
+                    ? "Mic"
+                    : "Start"
                 }
-              : { onClick: agentSpeaking ? onInterrupt : (isCaptureActive ? undefined : onMic) })}
-          >
-            <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/20" />
-            {agentSpeaking ? (
-              <span className="block size-[14px] rounded-[2px] bg-white" aria-hidden />
-            ) : live ? (
-              <MicIcon className="size-4" />
-            ) : (
-              <MicOffIcon className="size-4 opacity-80" />
-            )}
-          </button>
+                title={agentSpeaking ? "Interrupt" : undefined}
+                className={cn(
+                  "relative grid shrink-0 touch-none select-none place-items-center rounded-full text-white transition-[transform,box-shadow,opacity] duration-160 ease-out-custom active:scale-[0.97] disabled:opacity-40",
+                  "size-11",
+                  live
+                    ? "shadow-[0_1px_6px_rgba(59,73,234,0.18),inset_0_1px_0_rgba(255,255,255,0.14)]"
+                    : "shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+                )}
+                style={{
+                  background: live
+                    ? "#3B49EA"
+                    : "linear-gradient(150deg, var(--primary), oklch(0.18 0.012 250))",
+                }}
+                {...(live && voiceMode === "ptt" && !agentSpeaking && !isCaptureActive
+                  ? {
+                      onPointerDown: (e: React.PointerEvent) => {
+                        e.preventDefault();
+                        onHoldStart();
+                      },
+                      onPointerUp: onHoldEnd,
+                      onPointerLeave: onHoldEnd,
+                    }
+                  : { onClick: agentSpeaking ? onInterrupt : (isCaptureActive ? undefined : onMic) })}
+              >
+                <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/20" />
+                {agentSpeaking ? (
+                  <span className="block size-[14px] rounded-[2px] bg-white" aria-hidden />
+                ) : live ? (
+                  <MicIcon className="size-4" />
+                ) : (
+                  <MicOffIcon className="size-4 opacity-80" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Start voice input</TooltipContent>
+          </Tooltip>
 
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            disabled={isCaptureActive}
-            placeholder={
-              isCaptureActive
-                ? "Dictation active in another tab…"
-                : pttListening
-                ? "Listening… release to review, then send"
-                : "Ask or speak…"
-            }
-            rows={1}
-            className={cn(textareaBaseClass, "min-h-[36px] text-[13px] [field-sizing:normal]")}
-            style={textareaStyle}
-          />
-          <Button
-            size="icon"
-            onClick={submit}
-            disabled={isCaptureActive || !text.trim()}
-            className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_1px_5px_rgba(59,73,234,0.13)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
-          >
-            <ArrowUpIcon className="size-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                disabled={isCaptureActive}
+                placeholder={
+                  isCaptureActive
+                    ? "Dictation active in another tab…"
+                    : pttListening
+                    ? "Listening… release to review, then send"
+                    : "Ask or speak…"
+                }
+                rows={1}
+                className={cn(textareaBaseClass, "min-h-[36px] text-[13px] [field-sizing:normal]")}
+                style={textareaStyle}
+              />
+            </TooltipTrigger>
+            <TooltipContent>Type a question or command</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                onClick={submit}
+                disabled={isCaptureActive || !text.trim()}
+                className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_1px_5px_rgba(59,73,234,0.13)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
+              >
+                <ArrowUpIcon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Send message</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
       {/* ── Desktop: single row (unchanged layout, but disabled support) ──────────────────── */}
       <div className="hidden sm:flex items-end gap-2">
-        <VoiceButton
-          compact
-          active={live}
-          speaking={agentSpeaking}
-          holdToTalk={live && voiceMode === "ptt" && !agentSpeaking}
-          disabled={isCaptureActive}
-          onClick={agentSpeaking ? onInterrupt : onMic}
-          onHoldStart={agentSpeaking ? undefined : onHoldStart}
-          onHoldEnd={agentSpeaking ? undefined : onHoldEnd}
-        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="shrink-0">
+              <VoiceButton
+                compact
+                active={live}
+                speaking={agentSpeaking}
+                holdToTalk={live && voiceMode === "ptt" && !agentSpeaking}
+                disabled={isCaptureActive}
+                onClick={agentSpeaking ? onInterrupt : onMic}
+                onHoldStart={agentSpeaking ? undefined : onHoldStart}
+                onHoldEnd={agentSpeaking ? undefined : onHoldEnd}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Start voice input</TooltipContent>
+        </Tooltip>
 
         <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2 self-stretch")}>
           {(["ptt", "continuous"] as const).map((m) => (
-            <button
-              key={m}
-              disabled={isCaptureActive}
-              onClick={() => !isCaptureActive && onSetVoiceMode(m)}
-              className={segmentedControlButtonClass(voiceMode === m)}
-            >
-              {m === "ptt" ? "Push-to-talk" : "Hands-free"}
-            </button>
+            <Tooltip key={m}>
+              <TooltipTrigger asChild>
+                <button
+                  disabled={isCaptureActive}
+                  onClick={() => !isCaptureActive && onSetVoiceMode(m)}
+                  className={segmentedControlButtonClass(voiceMode === m)}
+                >
+                  {m === "ptt" ? "Push-to-talk" : "Hands-free"}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {m === "ptt"
+                  ? "Hold to speak for one message"
+                  : "Continuous voice conversation"}
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
 
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          disabled={isCaptureActive}
-          placeholder={
-            isCaptureActive
-              ? "Dictation active in another tab…"
-              : pttListening
-              ? "Listening… release to review, then send"
-              : "Speak or type a command…"
-          }
-          rows={1}
-          className={cn(textareaBaseClass, "min-h-10 text-[13px] placeholder:text-[13px]")}
-          style={textareaStyle}
-        />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              disabled={isCaptureActive}
+              placeholder={
+                isCaptureActive
+                  ? "Dictation active in another tab…"
+                  : pttListening
+                  ? "Listening… release to review, then send"
+                  : "Speak or type a command…"
+              }
+              rows={1}
+              className={cn(textareaBaseClass, "min-h-10 text-[13px] placeholder:text-[13px]")}
+              style={textareaStyle}
+            />
+          </TooltipTrigger>
+          <TooltipContent>Type a question or command</TooltipContent>
+        </Tooltip>
 
-        <Button
-          size="icon"
-          onClick={submit}
-          disabled={isCaptureActive || !text.trim()}
-          className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)] active:scale-[0.97]"
-        >
-          <ArrowUpIcon className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              onClick={submit}
+              disabled={isCaptureActive || !text.trim()}
+              className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)] active:scale-[0.97]"
+            >
+              <ArrowUpIcon className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Send message</TooltipContent>
+        </Tooltip>
 
         {live && (
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onEnd}
-            aria-label="End session"
-            disabled={isCaptureActive}
-            className="size-10 shrink-0 rounded-sm text-muted-foreground backdrop-blur-md transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
-          >
-            <PowerIcon className="size-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onEnd}
+                aria-label="End session"
+                disabled={isCaptureActive}
+                className="size-10 shrink-0 rounded-sm text-muted-foreground backdrop-blur-md transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
+              >
+                <PowerIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>End / reset session</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

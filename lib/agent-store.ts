@@ -88,7 +88,7 @@ interface AgentState {
   addTurn: (turn: TranscriptTurn) => void;
   addUserTurn: (content: string) => TranscriptTurn;
   addAgentTurn: (content: string) => TranscriptTurn;
-  editTurn: (id: string, text: string) => void;
+  editTurn: (id: string, text: string, markEdited?: boolean) => void;
 
   addAction: (a: ActionEvent) => void;
   updateAction: (
@@ -358,15 +358,15 @@ export const useAgentStore = create<AgentState>()(
         s.addTurn(turn);
         return turn;
       },
-      editTurn: (id, text) =>
+      editTurn: (id, text, markEdited) =>
         set((s) => {
           const transcript = s.transcript.map((t) =>
             t.id === id
               ? {
                   ...t,
-                  text,
-                  content: text,
-                  edited: text.trim() !== t.originalText.trim(),
+                  text: markEdited ? t.text : text,
+                  content: markEdited ? t.text : text,
+                  edited: markEdited ? true : text.trim() !== t.originalText.trim(),
                 }
               : t
           );

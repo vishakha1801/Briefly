@@ -60,6 +60,7 @@ export interface TranscriptTurn {
   confidence: number; // 0..1 ASR confidence
   at: number;
   partial?: boolean;
+  brief?: DealBrief;
 }
 
 export type ToolStatus = "pending" | "success" | "error";
