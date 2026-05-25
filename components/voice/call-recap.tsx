@@ -148,7 +148,10 @@ export function CallRecap({
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
     if (!SR) {
       toast.message("Browser speech not available — use 'Type call notes' instead.");
-      setDictateStatus("review");
+      // Clear capture mode so the command bar isn't stuck disabled, then fall
+      // back to the typing view which is the natural alternative to dictation.
+      useAgentStore.getState().setActiveCaptureMode(null);
+      setInlineView("typing");
       return;
     }
     const rec = new SR();

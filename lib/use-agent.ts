@@ -247,6 +247,11 @@ async function canAccessMic(): Promise<boolean> {
   }
 }
 
+function hasSpeechRecognition(): boolean {
+  return typeof window !== "undefined" &&
+    !!(window.SpeechRecognition ?? window.webkitSpeechRecognition);
+}
+
 export function useAgent(sessionId: string) {
   const sessionRef = useRef<RealtimeSession | null>(null);
   const speechRef = useRef<SpeechRec | null>(null);
@@ -845,6 +850,12 @@ export function useAgent(sessionId: string) {
       }
 
       if (store.mode === "realtime") {
+        if (!hasSpeechRecognition()) {
+          // No browser SR (Firefox etc.): unmute the WebRTC mic so OpenAI
+          // server VAD handles speech detection and transcription directly.
+          sessionRef.current?.setMicMuted(false);
+          return;
+        }
         sessionRef.current?.setMicMuted(true);
       }
 
@@ -995,11 +1006,22 @@ export function useAgent(sessionId: string) {
         store.setMode("realtime");
         store.start();
         const ptt = store.voiceMode === "ptt";
+        const srAvailable = hasSpeechRecognition();
         store.setHandsFree(!ptt);
-        session.setMicMuted(true);
+        if (ptt || srAvailable) {
+          // PTT: start muted (unmutes on hold). SR hands-free: mute WebRTC mic,
+          // use browser recognition over the text channel instead.
+          session.setMicMuted(true);
+        } else {
+          // No browser SR (Firefox etc.): leave the WebRTC mic live so OpenAI
+          // server VAD + Whisper handle speech detection and transcription.
+          session.setMicMuted(false);
+        }
         if (!ptt) {
           store.setActivity("listening");
-          speechRef.current = startHandsFreeRecognition();
+          if (srAvailable) {
+            speechRef.current = startHandsFreeRecognition();
+          }
         }
         toast.success(
           ptt ? "Connected — hold the mic to talk" : "Connected — speak or type"
@@ -1082,15 +1104,22 @@ export function useAgent(sessionId: string) {
     }
 
     if (next) {
-      speechRef.current = startHandsFreeRecognition();
-      if (!speechRef.current) {
-        toast.message("Browser speech not available — use the text box instead.");
-        store.setHandsFree(false);
-        store.setActivity("idle");
+      if (store.mode === "realtime" && !hasSpeechRecognition()) {
+        sessionRef.current?.setMicMuted(false);
+      } else {
+        speechRef.current = startHandsFreeRecognition();
+        if (!speechRef.current) {
+          toast.message("Browser speech not available — use the text box instead.");
+          store.setHandsFree(false);
+          store.setActivity("idle");
+        }
       }
     } else {
       speechRef.current?.abort();
       speechRef.current = null;
+      if (store.mode === "realtime" && !hasSpeechRecognition()) {
+        sessionRef.current?.setMicMuted(true);
+      }
       store.setActivity("idle");
     }
   }, [startHandsFreeRecognition]);
@@ -1111,7 +1140,15 @@ export function useAgent(sessionId: string) {
 
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!SR) {
-      toast.message("Browser speech isn't available — type your message instead.");
+      if (store.mode === "realtime" && store.status === "live") {
+        // No browser SR: unmute the WebRTC mic so OpenAI server VAD handles
+        // transcription. pttStop() re-mutes when the button is released.
+        sessionRef.current?.setMicMuted(false);
+        store.setActivity("listening");
+        store.setError(null);
+      } else {
+        toast.message("Browser speech isn't available — type your message instead.");
+      }
       return;
     }
     const rec = new SR();
@@ -1239,11 +1276,19 @@ export function useAgent(sessionId: string) {
       } else {
         store.setHandsFree(true);
         if (store.mode === "realtime") {
-          sessionRef.current?.setMicMuted(true);
+          if (hasSpeechRecognition()) {
+            sessionRef.current?.setMicMuted(true);
+            speechRef.current = startHandsFreeRecognition();
+            if (!speechRef.current)
+              toast.message("Browser speech not available — use the text box instead.");
+          } else {
+            sessionRef.current?.setMicMuted(false);
+          }
+        } else {
+          speechRef.current = startHandsFreeRecognition();
+          if (!speechRef.current)
+            toast.message("Browser speech not available — use the text box instead.");
         }
-        speechRef.current = startHandsFreeRecognition();
-        if (!speechRef.current)
-          toast.message("Browser speech not available — use the text box instead.");
       }
     },
     [startHandsFreeRecognition]
