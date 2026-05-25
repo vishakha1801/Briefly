@@ -253,7 +253,7 @@
   }
 
   .glass-chip {
-    background: oklch(1 0 0 / 0.4);
+    background: oklch(1 0 0 / 0.34);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.08);
@@ -261,7 +261,7 @@
     transition: background-color 160ms var(--ease-out-custom), border-color 160ms var(--ease-out-custom), box-shadow 160ms var(--ease-out-custom), transform 160ms var(--ease-out-custom);
   }
   .glass-chip:hover {
-    background: oklch(1 0 0 / 0.55);
+    background: oklch(1 0 0 / 0.47);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.16);
     box-shadow: 0 4px 12px 0 oklch(0.564 0.283 273.6 / 0.04);
   }
