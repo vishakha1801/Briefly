@@ -20,7 +20,7 @@ Similarly, **Talking points** are not just a random chat gimmick; they are struc
 ### 🐦‍🔥 Trust, Correction, and Voice Affordances 🌙
 Voice is inherently messy, so I designed Briefly to support human correction:
 - **Editable transcripts**: Reps can instantly edit previous messages or speech transcripts to correct what the system heard, triggering a fresh turn and assistant response.
-- **Microphone affordances**: Briefly supports **Push-to-talk** (for quick, non-disruptive lookups while you're on a call) and **Hands-free** (for continuous voice-first co-piloting). 
+- **Microphone affordances**: Briefly supports **Push-to-talk** (using either the mic button or by holding down the **Space** keyboard shortcut to quickly speak without switching modes—perfect for when a rep is already on a live customer call and wants a fast answer) and **Hands-free** (for continuous voice-first co-piloting). The PTT button tooltip matches this shortcut exactly: *“Hold Space or press and hold the mic to speak.”*
 - **Active Interruptions**: If the co-pilot talks too much, you can tap the mic to interrupt and stop it mid-sentence. It's a true voice-product affordance, not just a static playback bar.
 - **The Voice Orb**: The central orb is more than pretty motion design. It communicates current voice states in real-time: idle, listening, thinking, and speaking.
 

@@ -55,15 +55,13 @@ export default function VoiceHome() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== "Space" || e.repeat) return;
       const el = document.activeElement as HTMLElement | null;
-      if (
+      const isTyping =
         el &&
         (el.tagName === "INPUT" ||
           el.tagName === "TEXTAREA" ||
-          el.tagName === "SELECT" ||
-          el.tagName === "BUTTON" ||
-          el.isContentEditable)
-      )
-        return;
+          el.isContentEditable);
+      if (isTyping) return;
+
       const store = useAgentStore.getState();
       if (
         store.voiceMode !== "ptt" ||
@@ -72,11 +70,20 @@ export default function VoiceHome() {
         store.activeCaptureMode === "note"
       )
         return;
+
       e.preventDefault();
       pttStart();
     }
     function onKeyUp(e: KeyboardEvent) {
       if (e.code !== "Space") return;
+      const el = document.activeElement as HTMLElement | null;
+      const isTyping =
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable);
+      if (isTyping) return;
+
       const store = useAgentStore.getState();
       if (
         store.voiceMode !== "ptt" ||
@@ -85,6 +92,8 @@ export default function VoiceHome() {
         store.activeCaptureMode === "note"
       )
         return;
+
+      e.preventDefault();
       pttStop();
     }
     window.addEventListener("keydown", onKeyDown);
@@ -202,7 +211,7 @@ export default function VoiceHome() {
           {/* ── Center workspace — one cohesive voice session ──── */}
           <section className="flex min-w-0 flex-1 flex-col gap-4 px-3 pb-3 pt-3 sm:px-5 sm:pt-3">
             {/* Orb */}
-            <OrbStage size={isDesktop ? 140 : 108} />
+            <OrbStage size={isDesktop ? 147 : 113} />
 
             {/* Quick actions */}
             <ContextPrompts

@@ -87,7 +87,7 @@ export function CommandBar({
                 </TooltipTrigger>
                 <TooltipContent>
                   {m === "ptt"
-                    ? "Hold to speak for one message"
+                    ? "Hold Space or press and hold the mic to speak."
                     : "Continuous voice conversation"}
                 </TooltipContent>
               </Tooltip>
@@ -242,7 +242,7 @@ export function CommandBar({
               </TooltipTrigger>
               <TooltipContent>
                 {m === "ptt"
-                  ? "Hold to speak for one message"
+                  ? "Hold Space or press and hold the mic to speak."
                   : "Continuous voice conversation"}
               </TooltipContent>
             </Tooltip>
