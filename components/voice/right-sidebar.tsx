@@ -23,6 +23,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  segmentedControlBadgeClass,
+  segmentedControlItemClass,
+  segmentedControlListClass,
+} from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
@@ -238,20 +243,20 @@ export function RightSidebar() {
         }}
         className="flex h-full flex-col gap-0"
       >
-        <TabsList className="mx-1 mb-3 flex h-8 w-[calc(100%-0.5rem)] min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto rounded-sm border border-brand/10 bg-brand/5 p-0.5">
+        <TabsList className={cn(segmentedControlListClass, "mx-1 mb-3 grid-cols-3")}>
           <TabsTrigger
             value="customer"
-            className="h-6 shrink-0 rounded-xs px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-white/45 hover:text-foreground data-[state=active]:border data-[state=active]:border-brand/8 data-[state=active]:bg-white data-[state=active]:text-brand data-[state=active]:shadow-[0_2px_8px_rgba(59,73,234,0.08)] sm:px-3"
+            className={cn(segmentedControlItemClass, "sm:px-3")}
           >
             Customer
           </TabsTrigger>
           <TabsTrigger
             value="actions"
-            className="h-6 shrink-0 rounded-xs px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-white/45 hover:text-foreground data-[state=active]:border data-[state=active]:border-brand/8 data-[state=active]:bg-white data-[state=active]:text-brand data-[state=active]:shadow-[0_2px_8px_rgba(59,73,234,0.08)] sm:px-3"
+            className={cn(segmentedControlItemClass, "sm:px-3")}
           >
             Actions
             {actions.length > 0 && (
-              <span className="rounded-xs bg-brand/10 px-1 text-[9px] font-semibold tabular-nums text-brand">
+              <span className={segmentedControlBadgeClass}>
                 {actions.length}
               </span>
             )}
@@ -261,7 +266,7 @@ export function RightSidebar() {
           </TabsTrigger>
           <TabsTrigger
             value="notes"
-            className="h-6 shrink-0 rounded-xs px-2.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-white/45 hover:text-foreground data-[state=active]:border data-[state=active]:border-brand/8 data-[state=active]:bg-white data-[state=active]:text-brand data-[state=active]:shadow-[0_2px_8px_rgba(59,73,234,0.08)] sm:px-3"
+            className={cn(segmentedControlItemClass, "sm:px-3")}
           >
             Notes
           </TabsTrigger>

@@ -3,6 +3,10 @@
 import { ArrowUpIcon, MicIcon, MicOffIcon, PowerIcon } from "lucide-react";
 import { VoiceButton } from "@/components/voice/voice-button";
 import { Button } from "@/components/ui/button";
+import {
+  segmentedControlButtonClass,
+  segmentedControlListClass,
+} from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import { useAgentStore, type VoiceMode } from "@/lib/agent-store";
 import { cn } from "@/lib/utils";
@@ -62,21 +66,14 @@ export function CommandBar({
       <div className="flex flex-col gap-1 sm:hidden">
         {/* Row 1: mode toggle + end */}
         <div className="flex items-center gap-1">
-          <div
-            className="flex flex-1 items-center rounded-sm border border-brand/10 bg-brand/5 p-[2px] text-[10px] font-medium"
-          >
+          <div className={cn(segmentedControlListClass, "grid-cols-2")}>
             {(["ptt", "continuous"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => onSetVoiceMode(m)}
-                className={cn(
-                  "flex-1 rounded-xs py-[3px] text-center transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom active:scale-[0.97]",
-                  voiceMode === m
-                    ? "bg-white text-brand shadow-[0_1px_3px_rgba(59,73,234,0.07)] border border-brand/5"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
+                className={segmentedControlButtonClass(voiceMode === m)}
               >
-                {m === "ptt" ? "PTT" : "Hands-free"}
+                {m === "ptt" ? "Push-to-talk" : "Hands-free"}
               </button>
             ))}
           </div>
@@ -182,19 +179,12 @@ export function CommandBar({
           onHoldEnd={agentSpeaking ? undefined : onHoldEnd}
         />
 
-        <div
-          className="flex shrink-0 items-center self-stretch rounded-sm border border-brand/10 bg-brand/5 p-0.5 text-[11px] font-medium"
-        >
+        <div className={cn(segmentedControlListClass, "w-auto shrink-0 grid-cols-2 self-stretch")}>
           {(["ptt", "continuous"] as const).map((m) => (
             <button
               key={m}
               onClick={() => onSetVoiceMode(m)}
-              className={cn(
-                "rounded-xs px-2.5 py-1 transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom active:scale-[0.97]",
-                voiceMode === m
-                  ? "bg-white text-brand shadow-[0_2px_6px_rgba(59,73,234,0.06)] border border-brand/5"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+              className={segmentedControlButtonClass(voiceMode === m)}
             >
               {m === "ptt" ? "Push-to-talk" : "Hands-free"}
             </button>

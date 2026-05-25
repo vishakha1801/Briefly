@@ -13,6 +13,10 @@ import { RightSidebar } from "@/components/voice/right-sidebar";
 import { ImportCallModal } from "@/components/voice/import-call-modal";
 import { Button } from "@/components/ui/button";
 import {
+  segmentedControlButtonClass,
+  segmentedControlListClass,
+} from "@/components/ui/segmented-control";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -191,45 +195,28 @@ export default function VoiceHome() {
             <div className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg">
               {/* Workspace Navigation Bar */}
               <div className="flex shrink-0 flex-col gap-1.5 border-b border-brand/8 bg-white/25 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-                {customer?.name && (
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    {customer.name}
-                  </span>
-                )}
-                <div className="grid w-full grid-cols-3 gap-0.5 rounded-sm border border-brand/10 bg-brand/5 p-0.5 sm:flex sm:w-auto">
+                <span className="min-h-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {customer?.name ?? ""}
+                </span>
+                <div className={cn(segmentedControlListClass, "grid-cols-3 sm:ml-auto sm:w-auto")}>
                   <button
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("transcript")}
-                    className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
-                      centerView === "transcript"
-                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
-                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
-                    )}
+                    className={segmentedControlButtonClass(centerView === "transcript", "sm:px-3")}
                   >
                     Conversation
                   </button>
                   <button
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("recap")}
-                    className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
-                      centerView === "recap"
-                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
-                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
-                    )}
+                    className={segmentedControlButtonClass(centerView === "recap", "sm:px-3")}
                   >
                     Call recap
                   </button>
                   <button
                     type="button"
                     onClick={() => useAgentStore.getState().setCenterView("notes")}
-                    className={cn(
-                      "h-7 rounded-xs text-center text-xs font-medium transition-[transform,background-color,border-color,color,box-shadow] duration-150 ease-out-custom outline-none active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-brand/30 sm:px-3",
-                      centerView === "notes"
-                        ? "border border-brand/8 bg-white text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)]"
-                        : "text-muted-foreground hover:bg-white/45 hover:text-foreground"
-                    )}
+                    className={segmentedControlButtonClass(centerView === "notes", "sm:px-3")}
                   >
                     Post-call notes
                   </button>

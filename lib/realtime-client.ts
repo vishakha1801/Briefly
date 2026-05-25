@@ -213,6 +213,8 @@ export class RealtimeSession {
   private currentResponseHasAudio = false;
   private currentResponseTextSent = false;
   private remoteAudioProgressed = false;
+  private responseInProgress = false;
+  private pendingResponseCreate = false;
   private audioDoneTimer: number | null = null;
 
   /**
@@ -364,6 +366,36 @@ export class RealtimeSession {
     if (this.dc?.readyState === "open") this.dc.send(JSON.stringify(obj));
   }
 
+  private requestResponse({ interruptActive = false } = {}) {
+    if (this.responseInProgress) {
+      this.pendingResponseCreate = true;
+      if (interruptActive) this.cancelActiveResponse({ clearPending: false });
+      return;
+    }
+
+    this.send({ type: "response.create", response: RESPONSE_OPTS });
+  }
+
+  private cancelActiveResponse({ clearPending = true } = {}) {
+    if (clearPending) this.pendingResponseCreate = false;
+    this.send({ type: "response.cancel" });
+    const el = this.getAudioEl();
+    if (el) {
+      el.pause();
+      el.currentTime = el.duration || 0;
+      // Mark as not playable so the next response.audio.delta re-attempts play().
+      this.realtimeAudioPlayable = false;
+    }
+  }
+
+  private flushPendingResponse() {
+    this.responseInProgress = false;
+    if (!this.pendingResponseCreate) return false;
+    this.pendingResponseCreate = false;
+    this.requestResponse();
+    return true;
+  }
+
   private configureSession() {
     // The current Realtime session schema requires type/model on session.update.
     this.send({
@@ -398,7 +430,7 @@ export class RealtimeSession {
         content: [{ type: "input_text", text }],
       },
     });
-    this.send({ type: "response.create", response: RESPONSE_OPTS });
+    this.requestResponse({ interruptActive: true });
   }
 
   /** Inject a system context note without triggering a new response (used for customer switching). */
@@ -423,7 +455,7 @@ export class RealtimeSession {
         content: [{ type: "input_text", text }],
       },
     });
-    this.send({ type: "response.create", response: RESPONSE_OPTS });
+    this.requestResponse({ interruptActive: true });
   }
 
   private async handleEvent(evt: {
@@ -443,6 +475,7 @@ export class RealtimeSession {
         this.cb.onActivity?.("transcribing");
         break;
       case "response.created":
+        this.responseInProgress = true;
         this.currentResponseHasAudio = false;
         this.currentResponseTextSent = false;
         this.remoteAudioProgressed = false;
@@ -474,6 +507,7 @@ export class RealtimeSession {
             this.cb.onAgentText?.(text, hasAudio);
           }
         }
+        if (this.flushPendingResponse()) break;
         if (this.currentResponseHasAudio && this.remoteAudioProgressed) {
           // Give the client-side audio buffer ~600 ms to drain before signalling done.
           this.audioDoneTimer = window.setTimeout(() => {
@@ -507,6 +541,8 @@ export class RealtimeSession {
         const msg =
           evt.error?.message || evt.error?.code || "Realtime error";
         this.cb.onServerError?.(msg);
+        this.responseInProgress = false;
+        this.pendingResponseCreate = false;
         this.cb.onActivity?.("idle");
         break;
       }
@@ -528,7 +564,7 @@ export class RealtimeSession {
         });
         this.cb.onActivity?.("responding");
         // Explicitly request audio for the post-tool spoken summary.
-        this.send({ type: "response.create", response: RESPONSE_OPTS });
+        this.requestResponse();
         break;
       }
     }
@@ -540,14 +576,7 @@ export class RealtimeSession {
 
   /** Barge-in: stop the agent's current spoken response so the rep can talk. */
   interrupt() {
-    this.send({ type: "response.cancel" });
-    const el = this.getAudioEl();
-    if (el) {
-      el.pause();
-      el.currentTime = el.duration || 0;
-      // Mark as not playable so the next response.audio.delta re-attempts play().
-      this.realtimeAudioPlayable = false;
-    }
+    this.cancelActiveResponse();
   }
 
   close() {
@@ -566,6 +595,8 @@ export class RealtimeSession {
     this.dc = null;
     this.realtimeAudioPlayable = false;
     this.remoteAudioProgressed = false;
+    this.responseInProgress = false;
+    this.pendingResponseCreate = false;
     this.cb.onLevel?.(0);
     this.cb.onStatus?.("closed");
   }
