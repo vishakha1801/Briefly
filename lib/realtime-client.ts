@@ -282,8 +282,20 @@ export class RealtimeSession {
   async connect(): Promise<void> {
     this.cb.onStatus?.("connecting");
 
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+    } catch (err) {
+      this.cb.onStatus?.("error");
+      const name = err instanceof DOMException ? err.name : "UnknownError";
+      throw new Error(`mic:${name}`);
+    }
+
     const tokenRes = await fetch("/api/realtime/session", { method: "POST" });
     if (!tokenRes.ok) {
+      this.micStream?.getTracks().forEach((track) => track.stop());
+      this.micStream = null;
       const detail = await tokenRes.json().catch(() => ({}));
       throw new Error(detail.error || "no realtime token");
     }
@@ -316,16 +328,6 @@ export class RealtimeSession {
       this.tryPlayAudio();
     };
 
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-    } catch {
-      this.cb.onStatus?.("error");
-      pc.close();
-      this.pc = null;
-      throw new Error("mic-denied");
-    }
     for (const track of this.micStream.getAudioTracks()) {
       pc.addTrack(track, this.micStream);
     }
@@ -354,6 +356,10 @@ export class RealtimeSession {
     );
     if (!sdpRes.ok) {
       this.cb.onStatus?.("error");
+      this.micStream?.getTracks().forEach((track) => track.stop());
+      this.micStream = null;
+      pc.close();
+      this.pc = null;
       throw new Error("SDP exchange failed");
     }
     await pc.setRemoteDescription({

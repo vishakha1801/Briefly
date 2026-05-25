@@ -60,14 +60,26 @@ export default function VoiceHome() {
       )
         return;
       const store = useAgentStore.getState();
-      if (store.voiceMode !== "ptt" || store.status !== "live") return;
+      if (
+        store.voiceMode !== "ptt" ||
+        store.status !== "live" ||
+        store.activeCaptureMode === "recap" ||
+        store.activeCaptureMode === "note"
+      )
+        return;
       e.preventDefault();
       pttStart();
     }
     function onKeyUp(e: KeyboardEvent) {
       if (e.code !== "Space") return;
       const store = useAgentStore.getState();
-      if (store.voiceMode !== "ptt" || store.status !== "live") return;
+      if (
+        store.voiceMode !== "ptt" ||
+        store.status !== "live" ||
+        store.activeCaptureMode === "recap" ||
+        store.activeCaptureMode === "note"
+      )
+        return;
       pttStop();
     }
     window.addEventListener("keydown", onKeyDown);

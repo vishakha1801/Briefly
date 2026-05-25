@@ -34,12 +34,14 @@ export function CommandBar({
   const setText = useAgentStore((s) => s.setInputDraft);
   const voiceMode = useAgentStore((s) => s.voiceMode);
   const activity = useAgentStore((s) => s.activity);
+  const activeCaptureMode = useAgentStore((s) => s.activeCaptureMode);
+  const isCaptureActive = activeCaptureMode === "recap" || activeCaptureMode === "note";
 
   const pttListening = live && voiceMode === "ptt" && activity === "listening";
   const agentSpeaking = live && activity === "speaking";
 
   function submit() {
-    if (!text.trim()) return;
+    if (!text.trim() || isCaptureActive) return;
     onSend(text);
     setText("");
   }
@@ -70,7 +72,8 @@ export function CommandBar({
             {(["ptt", "continuous"] as const).map((m) => (
               <button
                 key={m}
-                onClick={() => onSetVoiceMode(m)}
+                disabled={isCaptureActive}
+                onClick={() => !isCaptureActive && onSetVoiceMode(m)}
                 className={segmentedControlButtonClass(voiceMode === m)}
               >
                 {m === "ptt" ? "Push-to-talk" : "Hands-free"}
@@ -83,6 +86,7 @@ export function CommandBar({
               variant="ghost"
               onClick={onEnd}
               aria-label="End session"
+              disabled={isCaptureActive}
               className="size-7 shrink-0 rounded-sm text-muted-foreground transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
             >
               <PowerIcon className="size-3.5" />
@@ -95,6 +99,7 @@ export function CommandBar({
           {/* Compact mobile mic — 44px, soft shadow, no glow rings */}
           <button
             type="button"
+            disabled={isCaptureActive}
             aria-label={
               agentSpeaking
                 ? "Interrupt"
@@ -117,7 +122,7 @@ export function CommandBar({
                 ? "#3B49EA"
                 : "linear-gradient(150deg, var(--primary), oklch(0.18 0.012 250))",
             }}
-            {...(live && voiceMode === "ptt" && !agentSpeaking
+            {...(live && voiceMode === "ptt" && !agentSpeaking && !isCaptureActive
               ? {
                   onPointerDown: (e: React.PointerEvent) => {
                     e.preventDefault();
@@ -126,7 +131,7 @@ export function CommandBar({
                   onPointerUp: onHoldEnd,
                   onPointerLeave: onHoldEnd,
                 }
-              : { onClick: agentSpeaking ? onInterrupt : onMic })}
+              : { onClick: agentSpeaking ? onInterrupt : (isCaptureActive ? undefined : onMic) })}
           >
             <span className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/20" />
             {agentSpeaking ? (
@@ -147,8 +152,11 @@ export function CommandBar({
                 submit();
               }
             }}
+            disabled={isCaptureActive}
             placeholder={
-              pttListening
+              isCaptureActive
+                ? "Dictation active in another tab…"
+                : pttListening
                 ? "Listening… release to review, then send"
                 : "Ask or speak…"
             }
@@ -159,7 +167,7 @@ export function CommandBar({
           <Button
             size="icon"
             onClick={submit}
-            disabled={!text.trim()}
+            disabled={isCaptureActive || !text.trim()}
             className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_1px_5px_rgba(59,73,234,0.13)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
           >
             <ArrowUpIcon className="size-3.5" />
@@ -167,13 +175,14 @@ export function CommandBar({
         </div>
       </div>
 
-      {/* ── Desktop: single row (unchanged) ──────────────────── */}
+      {/* ── Desktop: single row (unchanged layout, but disabled support) ──────────────────── */}
       <div className="hidden sm:flex items-end gap-2">
         <VoiceButton
           compact
           active={live}
           speaking={agentSpeaking}
           holdToTalk={live && voiceMode === "ptt" && !agentSpeaking}
+          disabled={isCaptureActive}
           onClick={agentSpeaking ? onInterrupt : onMic}
           onHoldStart={agentSpeaking ? undefined : onHoldStart}
           onHoldEnd={agentSpeaking ? undefined : onHoldEnd}
@@ -183,7 +192,8 @@ export function CommandBar({
           {(["ptt", "continuous"] as const).map((m) => (
             <button
               key={m}
-              onClick={() => onSetVoiceMode(m)}
+              disabled={isCaptureActive}
+              onClick={() => !isCaptureActive && onSetVoiceMode(m)}
               className={segmentedControlButtonClass(voiceMode === m)}
             >
               {m === "ptt" ? "Push-to-talk" : "Hands-free"}
@@ -200,8 +210,11 @@ export function CommandBar({
               submit();
             }
           }}
+          disabled={isCaptureActive}
           placeholder={
-            pttListening
+            isCaptureActive
+              ? "Dictation active in another tab…"
+              : pttListening
               ? "Listening… release to review, then send"
               : "Speak or type a command…"
           }
@@ -213,7 +226,7 @@ export function CommandBar({
         <Button
           size="icon"
           onClick={submit}
-          disabled={!text.trim()}
+          disabled={isCaptureActive || !text.trim()}
           className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)] active:scale-[0.97]"
         >
           <ArrowUpIcon className="size-4" />
@@ -225,6 +238,7 @@ export function CommandBar({
             variant="ghost"
             onClick={onEnd}
             aria-label="End session"
+            disabled={isCaptureActive}
             className="size-10 shrink-0 rounded-sm text-muted-foreground backdrop-blur-md transition-[transform,background-color,color] duration-150 ease-out-custom hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]"
           >
             <PowerIcon className="size-4" />

@@ -167,8 +167,22 @@ export function CallRecap({
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (e: any) => {
-      if (e.error !== "no-speech" && e.error !== "aborted")
-        toast.error(`Mic error: ${e.error}`);
+      if (e.error !== "no-speech" && e.error !== "aborted") {
+        let errorDesc = `Mic error: ${e.error}`;
+        if (e.error === "not-allowed" || e.error === "permission-denied") {
+          errorDesc = "Allow mic access in your browser, then tap to start again. Using demo mode for now.";
+          if (typeof window !== "undefined" && !window.isSecureContext) {
+            errorDesc = "Insecure context (HTTP) detected. Microphone access requires HTTPS or localhost. Using demo mode for now.";
+          }
+          toast.error("Microphone blocked", {
+            description: errorDesc,
+          });
+          setDraft("");
+          setInlineView("typing");
+        } else {
+          toast.error(errorDesc);
+        }
+      }
       setDictateStatus("review");
       dictateRecRef.current = null;
     };

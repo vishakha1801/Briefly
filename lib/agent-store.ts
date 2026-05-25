@@ -15,8 +15,9 @@ export type VoiceMode = "ptt" | "continuous";
  * Which feature is currently capturing microphone input.
  * "recap"  → recap dictation is active; normal chat recognition is suspended.
  * "chat"   → normal hands-free chat is active (default / null is equivalent).
+ * "note"   → post-call notes dictation is active.
  */
-export type CaptureMode = "chat" | "recap" | null;
+export type CaptureMode = null | "chat" | "recap" | "note";
 
 interface AgentState {
   sessionId: string | null;

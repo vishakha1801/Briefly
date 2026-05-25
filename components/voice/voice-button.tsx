@@ -34,7 +34,7 @@ export function VoiceButton({
   const iconSize = compact ? "size-4" : "size-7";
 
   // Disable hold-to-talk when the agent is mid-sentence; a tap interrupts instead.
-  const holdProps = holdToTalk && !speaking
+  const holdProps = holdToTalk && !speaking && !disabled
     ? {
         onPointerDown: (e: React.PointerEvent) => {
           e.preventDefault();
@@ -43,7 +43,7 @@ export function VoiceButton({
         onPointerUp: () => onHoldEnd?.(),
         onPointerLeave: () => onHoldEnd?.(),
       }
-    : { onClick };
+    : { onClick: disabled ? undefined : onClick };
 
   return (
     <div className="relative grid place-items-center">

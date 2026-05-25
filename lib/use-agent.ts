@@ -40,10 +40,43 @@ function speakTTS(text: string): Promise<void> {
 
 const FINAL_FALLBACK_DELAY = 4500;
 
-const FILLER_RE = /^(okay|ok|sure|yeah|yes|got it|one sec|just a sec|give me a second|let me (pull|check|look)|i'?ll (pull|check|look)|working on it)[\s.!-]*$/i;
+const FILLER_RE = /^(okay|ok|sure|yeah|yes|got it|gotcha|one sec|just a sec|give me a second|checking|checking now|working on it|let me (pull|check|look|grab|find)( that| this| it| up| for you)?|i'?ll (pull|check|look|grab|find)( that| this| it| up| for you)?)[\s.!-]*$/i;
 
 function isFillerResponse(text: string) {
   return FILLER_RE.test(text.trim());
+}
+
+function conciseCustomerSummary(
+  customer: Customer | null,
+  history: {
+    notes?: { headline: string; body?: string }[];
+    tasks?: { done: boolean; title: string; dueDate?: string }[];
+  },
+  contexts: CallContext[] = []
+) {
+  const notes = history.notes ?? [];
+  const openTasks = (history.tasks ?? []).filter((task) => !task.done);
+  const parts: string[] = [];
+
+  if (customer) {
+    parts.push(`${customer.name} is at ${customer.company}, currently in ${customer.stage}.`);
+  }
+  if (notes[0]) {
+    const detail = notes[0].body
+      ? ` ${notes[0].body.split(/(?<=[.?!])\s/)[0]}`
+      : "";
+    parts.push(`Latest note: ${notes[0].headline}.${detail}`);
+  }
+  if (openTasks[0]) {
+    parts.push(
+      `Open follow-up: ${openTasks[0].title}${openTasks[0].dueDate ? ` by ${shortDate(openTasks[0].dueDate)}` : ""}.`
+    );
+  }
+  if (!notes[0] && !openTasks[0] && contexts.length === 0) {
+    parts.push("No saved notes, open follow-ups, or call transcripts yet.");
+  }
+
+  return parts.join(" ");
 }
 
 function finalResponseForTool(
@@ -68,19 +101,7 @@ function finalResponseForTool(
       notes?: { headline: string; body?: string }[];
       tasks?: { done: boolean; title: string; dueDate?: string }[];
     };
-    const notes = history.notes ?? [];
-    const openTasks = (history.tasks ?? []).filter((task) => !task.done);
-    if (!notes.length && !openTasks.length) {
-      return "I found the customer, but there are no saved notes or open follow-ups yet.";
-    }
-    const parts: string[] = [];
-    if (notes[0]) parts.push(`Latest note: "${notes[0].headline}".`);
-    if (openTasks[0]) {
-      parts.push(
-        `Next follow-up: "${openTasks[0].title}"${openTasks[0].dueDate ? `, due ${shortDate(openTasks[0].dueDate)}` : ""}.`
-      );
-    }
-    return parts.join(" ");
+    return conciseCustomerSummary(null, history);
   }
 
   if (name === "get_call_context") {
@@ -217,7 +238,9 @@ export function useAgent(sessionId: string) {
   const sessionRef = useRef<RealtimeSession | null>(null);
   const speechRef = useRef<SpeechRec | null>(null);
   const pttShouldSendRef = useRef(false);
+  const pttRealtimeMuteTimerRef = useRef<number | null>(null);
   const realtimeFallbackTimerRef = useRef<number | null>(null);
+  const realtimeFinalAnswerRef = useRef(false);
   const resumeHandsFreeRef = useRef<() => void>(() => {});
   const sendRepRef = useRef<(text: string) => void>(() => {});
   const dealBriefRef = useRef<() => void>(() => {});
@@ -410,7 +433,6 @@ export function useAgent(sessionId: string) {
       }
 
       if (intent.kind === "create_customer") {
-        await sayAgent(`Got it — creating a customer record for ${intent.name} at ${intent.company}.`);
         const { result } = await runTool("create_customer", {
           name: intent.name,
           company: intent.company,
@@ -428,7 +450,6 @@ export function useAgent(sessionId: string) {
           await sayAgent(`I don't see ${name || "that customer"} in the list. Want me to create a new customer record?`);
           return;
         }
-        await sayAgent("Let me pull that up.");
         const [{ result: histResult }, { result: ctxResult }, customer] =
           await Promise.all([
             runTool("get_customer_history", { customerId }),
@@ -440,36 +461,7 @@ export function useAgent(sessionId: string) {
           tasks?: { done: boolean; title: string; dueDate?: string }[];
         };
         const contexts = ctxResult as CallContext[];
-        const openTasks = (hist.tasks ?? []).filter((t) => !t.done);
-        const notes = hist.notes ?? [];
-        const hasTranscripts = Array.isArray(contexts) && contexts.length > 0;
-
-        // Build a richer "about" — who they are, where the deal is, what
-        // matters now, and what's outstanding.
-        const parts: string[] = [];
-        if (customer) {
-          parts.push(
-            `${customer.name} is at ${customer.company}, currently in ${customer.stage}.`
-          );
-        }
-        if (notes[0]) {
-          const detail = notes[0].body
-            ? ` ${notes[0].body.split(/(?<=[.?!])\s/)[0]}`
-            : "";
-          parts.push(`Latest: "${notes[0].headline}".${detail}`);
-        }
-        if (notes[1]) parts.push(`Also on file: "${notes[1].headline}".`);
-        if (openTasks.length) {
-          parts.push(
-            `${openTasks.length} open follow-up${openTasks.length === 1 ? "" : "s"} — next: "${openTasks[0].title}"${openTasks[0].dueDate ? ` (due ${shortDate(openTasks[0].dueDate)})` : ""}.`
-          );
-        }
-        parts.push(
-          hasTranscripts
-            ? `${contexts.length} call transcript${contexts.length === 1 ? "" : "s"} on file. Use Call recap to generate post-call notes.`
-            : "No call transcripts yet — import one for call-level detail."
-        );
-        await sayAgent(parts.join(" "));
+        await sayAgent(conciseCustomerSummary(customer, hist, contexts));
         return;
       }
 
@@ -483,7 +475,6 @@ export function useAgent(sessionId: string) {
           );
           return;
         }
-        await sayAgent("Let me check the call context.");
         const [{ result: ctxResult }, { result: histResult }] = await Promise.all([
           runTool("get_call_context", { customerId }),
           runTool("get_customer_history", { customerId }),
@@ -532,9 +523,8 @@ export function useAgent(sessionId: string) {
             .map((t) => t.content ?? t.text)
             .join(" ");
         }
-        await sayAgent(`Got it. I'll save a note: "${truncate(noteText)}". Saving now.`);
-        await runTool("save_note", { customerId, rawText: noteText }, repTurnId);
-        await sayAgent("Saved.");
+        const { result } = await runTool("save_note", { customerId, rawText: noteText }, repTurnId);
+        await sayAgent(finalResponseForTool("save_note", result, { rawText: noteText }));
         return;
       }
 
@@ -548,20 +538,12 @@ export function useAgent(sessionId: string) {
           );
           return;
         }
-        await sayAgent(
-          `Got it — I'll set a reminder to ${lower(intent.title)}${
-            intent.dateText ? ` ${prep(intent.dateText)}` : ""
-          }. Creating now.`
-        );
         const { result } = await runTool(
           "create_task",
           { customerId, title: intent.title, dueDate: intent.dateText, priority: "med" },
           repTurnId
         );
-        const due = (result as { dueDate?: string }).dueDate;
-        await sayAgent(
-          due ? `Done — reminder set for ${shortDate(due)}.` : "Done — task created."
-        );
+        await sayAgent(finalResponseForTool("create_task", result, { title: intent.title }));
         return;
       }
     },
@@ -672,6 +654,7 @@ export function useAgent(sessionId: string) {
       if (!trimmed) return;
       const store = useAgentStore.getState();
       const turn = store.addUserTurn(trimmed);
+      realtimeFinalAnswerRef.current = false;
       store.setActivity("thinking");
 
       // In hands-free mode, stop recognition for the whole agent turn. It
@@ -778,6 +761,7 @@ export function useAgent(sessionId: string) {
       try {
         rec.start();
         useAgentStore.getState().setActivity("listening");
+        useAgentStore.getState().setError(null);
         return rec;
       } catch {
         return null;
@@ -815,6 +799,12 @@ export function useAgent(sessionId: string) {
         return;
       }
 
+      if (store.mode === "realtime") {
+        sessionRef.current?.setMicMuted(false);
+        store.setActivity("listening");
+        return;
+      }
+
       speechRef.current = startHandsFreeRecognition();
       if (!speechRef.current) {
         toast.message("Browser speech not available — use the text box instead.");
@@ -824,11 +814,17 @@ export function useAgent(sessionId: string) {
 
   const startSimulation = useCallback(async () => {
     const store = useAgentStore.getState();
+    const wasMicBlocked = store.errorMsg === "mic-blocked";
     store.setMode("simulation");
     store.start();
-    store.setError(null);
+    if (!wasMicBlocked) {
+      store.setError(null);
+    }
     store.setActivity("idle");
-    const ptt = store.voiceMode === "ptt";
+    if (wasMicBlocked) {
+      store.setVoiceMode("ptt");
+    }
+    const ptt = wasMicBlocked || store.voiceMode === "ptt";
     store.setHandsFree(!ptt);
     await sayAgent(
       ptt
@@ -870,6 +866,7 @@ export function useAgent(sessionId: string) {
           onAgentText: (t, hasAudio) => {
             if (isFillerResponse(t)) return;
             clearRealtimeFallback();
+            realtimeFinalAnswerRef.current = true;
             useAgentStore.getState().addAgentTurn(t);
             if (!hasAudio) {
               // hasAudio=false means either no audio from the server OR the browser
@@ -895,6 +892,10 @@ export function useAgent(sessionId: string) {
             const { result } = await runTool(name, args);
             const fallback = finalResponseForTool(name, result, args);
             realtimeFallbackTimerRef.current = window.setTimeout(() => {
+              if (realtimeFinalAnswerRef.current) {
+                realtimeFallbackTimerRef.current = null;
+                return;
+              }
               const store = useAgentStore.getState();
               store.setActivity("responding");
               store.addAgentTurn(fallback);
@@ -922,35 +923,40 @@ export function useAgent(sessionId: string) {
         store.start();
         const ptt = store.voiceMode === "ptt";
         store.setHandsFree(!ptt);
-        // All input goes through the text box (PTT or hands-free); mute the
-        // Realtime VAD so the server doesn't auto-respond before the rep reviews.
-        session.setMicMuted(true);
+        session.setMicMuted(ptt);
         if (!ptt) {
-          speechRef.current = startHandsFreeRecognition();
-          if (!speechRef.current)
-            toast.message("Browser speech not available — use the text box instead.");
+          store.setActivity("listening");
         }
         toast.success(
           ptt ? "Connected — hold the mic to talk" : "Connected — speak or type"
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
-        if (msg === "mic-denied") {
+        if (msg.startsWith("mic:")) {
+          const browserReason = msg.slice(4);
           useAgentStore.getState().setError("mic-blocked");
+          
+          let errorDesc = "Allow mic access in your browser, then tap to start again. Using demo mode for now.";
+          if (typeof window !== "undefined" && !window.isSecureContext) {
+            errorDesc = "Insecure context (HTTP) detected. Microphone access requires HTTPS or localhost. Using demo mode for now.";
+          } else if (browserReason && !/NotAllowed|PermissionDenied|Security/i.test(browserReason)) {
+            errorDesc = `The browser could not start the microphone (${browserReason}). Using demo mode for now.`;
+          }
+          
           toast.error("Microphone blocked", {
-            description:
-              "Allow mic access in your browser, then tap to start again. Using demo mode for now.",
+            description: errorDesc,
           });
+          await startSimulation();
         } else {
           const detail = msg ? `: ${msg}` : "";
           toast.message("Voice unavailable — using text mode.", {
             description: `Realtime connection failed${detail}. Check that OPENAI_API_KEY is set.`,
           });
+          await startSimulation();
         }
-        await startSimulation();
       }
     },
-    [clearRealtimeFallback, runTool, startSimulation, startHandsFreeRecognition]
+    [clearRealtimeFallback, runTool, startSimulation]
   );
 
   const rerunCorrection = useCallback(
@@ -1059,8 +1065,17 @@ export function useAgent(sessionId: string) {
 
   const toggleMic = useCallback(() => {
     const store = useAgentStore.getState();
+    if (store.activeCaptureMode === "recap" || store.activeCaptureMode === "note") {
+      return;
+    }
     const next = !store.handsFree;
     store.setHandsFree(next);
+
+    if (store.mode === "realtime") {
+      sessionRef.current?.setMicMuted(!next);
+      store.setActivity(next ? "listening" : "idle");
+      return;
+    }
 
     if (next) {
       speechRef.current = startHandsFreeRecognition();
@@ -1082,6 +1097,20 @@ export function useAgent(sessionId: string) {
    */
   const pttStart = useCallback(() => {
     const store = useAgentStore.getState();
+    if (store.activeCaptureMode === "recap" || store.activeCaptureMode === "note") {
+      return;
+    }
+    if (store.mode === "realtime" && store.status === "live") {
+      if (pttRealtimeMuteTimerRef.current) {
+        window.clearTimeout(pttRealtimeMuteTimerRef.current);
+        pttRealtimeMuteTimerRef.current = null;
+      }
+      store.setInputDraft("");
+      store.setActivity("listening");
+      sessionRef.current?.setMicMuted(false);
+      return;
+    }
+
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!SR) {
       toast.message("Browser speech isn't available — type your message instead.");
@@ -1116,6 +1145,7 @@ export function useAgent(sessionId: string) {
     try {
       rec.start();
       store.setActivity("listening");
+      store.setError(null);
       speechRef.current = rec;
     } catch {
       /* already started */
@@ -1123,6 +1153,22 @@ export function useAgent(sessionId: string) {
   }, [sendRep]);
 
   const pttStop = useCallback(() => {
+    const store = useAgentStore.getState();
+    if (store.activeCaptureMode === "recap" || store.activeCaptureMode === "note") {
+      return;
+    }
+    if (store.mode === "realtime" && store.status === "live") {
+      store.setActivity("transcribing");
+      if (pttRealtimeMuteTimerRef.current) {
+        window.clearTimeout(pttRealtimeMuteTimerRef.current);
+      }
+      pttRealtimeMuteTimerRef.current = window.setTimeout(() => {
+        sessionRef.current?.setMicMuted(true);
+        pttRealtimeMuteTimerRef.current = null;
+      }, 450);
+      return;
+    }
+
     pttShouldSendRef.current = true;
     speechRef.current?.stop();
     speechRef.current = null;
@@ -1179,6 +1225,7 @@ export function useAgent(sessionId: string) {
       }
       rec.start();
       store.setActivity("listening");
+      store.setError(null);
       speechRef.current = rec;
     } catch {
       toast.message("Speech capture is already active.");
@@ -1201,6 +1248,11 @@ export function useAgent(sessionId: string) {
         if (store.mode === "realtime") sessionRef.current?.setMicMuted(true);
       } else {
         store.setHandsFree(true);
+        if (store.mode === "realtime") {
+          sessionRef.current?.setMicMuted(false);
+          store.setActivity("listening");
+          return;
+        }
         speechRef.current = startHandsFreeRecognition();
         if (!speechRef.current)
           toast.message("Browser speech not available — use the text box instead.");
@@ -1274,6 +1326,10 @@ export function useAgent(sessionId: string) {
 
   const end = useCallback(() => {
     clearRealtimeFallback();
+    if (pttRealtimeMuteTimerRef.current) {
+      window.clearTimeout(pttRealtimeMuteTimerRef.current);
+      pttRealtimeMuteTimerRef.current = null;
+    }
     sessionRef.current?.close();
     sessionRef.current = null;
     speechRef.current?.abort();
@@ -1284,6 +1340,10 @@ export function useAgent(sessionId: string) {
   useEffect(
     () => () => {
       clearRealtimeFallback();
+      if (pttRealtimeMuteTimerRef.current) {
+        window.clearTimeout(pttRealtimeMuteTimerRef.current);
+        pttRealtimeMuteTimerRef.current = null;
+      }
       sessionRef.current?.close();
       sessionRef.current = null;
       speechRef.current?.abort();
@@ -1312,17 +1372,4 @@ export function useAgent(sessionId: string) {
     setVoiceMode,
     end,
   };
-}
-
-function truncate(s: string, n = 80) {
-  const t = s.trim();
-  return t.length > n ? t.slice(0, n - 1) + "…" : t;
-}
-function lower(s: string) {
-  return s.charAt(0).toLowerCase() + s.slice(1);
-}
-function prep(dateText: string) {
-  return /^(on|in|next|this|today|tomorrow|tonight)/i.test(dateText.trim())
-    ? dateText
-    : `on ${dateText}`;
 }
