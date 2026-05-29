@@ -62,8 +62,8 @@ export function CommandBar({
   const textareaBaseClass = cn(
     "max-h-28 flex-1 resize-none rounded-sm border text-sm transition-[background-color,border-color,box-shadow] duration-160 ease-out-custom",
     "focus-visible:ring-0 focus-visible:outline-none",
-    "shadow-[inset_0_1px_2px_rgba(59,73,234,0.04),0_1px_0_rgba(255,255,255,0.7)]",
-    "focus-visible:shadow-[inset_0_1px_2px_rgba(59,73,234,0.06),0_0_0_3px_rgba(59,73,234,0.09)] focus-visible:border-brand/30",
+    "shadow-[inset_0_1px_2px_rgba(26,26,26,0.025),0_1px_0_rgba(255,255,255,0.7)]",
+    "focus-visible:shadow-[inset_0_1px_2px_rgba(26,26,26,0.035),0_0_0_3px_rgba(59,73,234,0.09),0_8px_20px_rgba(26,26,26,0.045)] focus-visible:border-brand/30",
     pttListening && "border-brand/60 bg-brand/5"
   );
 
@@ -198,7 +198,7 @@ export function CommandBar({
                 size="icon"
                 onClick={submit}
                 disabled={isCaptureActive || !text.trim()}
-                className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_1px_5px_rgba(59,73,234,0.13)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
+                className="size-9 shrink-0 rounded-sm bg-brand shadow-[0_8px_18px_rgba(26,26,26,0.08),0_2px_8px_rgba(59,73,234,0.12),inset_0_1px_0_rgba(255,255,255,0.18)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 active:scale-[0.97]"
               >
                 <ArrowUpIcon className="size-3.5" />
               </Button>
@@ -282,7 +282,7 @@ export function CommandBar({
               size="icon"
               onClick={submit}
               disabled={isCaptureActive || !text.trim()}
-              className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_4px_15px_rgba(59,73,234,0.25)] active:scale-[0.97]"
+              className="size-10 shrink-0 rounded-sm bg-brand shadow-[0_8px_18px_rgba(26,26,26,0.08),0_2px_8px_rgba(59,73,234,0.12),inset_0_1px_0_rgba(255,255,255,0.18)] transition-[transform,background-color,box-shadow] duration-160 ease-out-custom hover:bg-brand/90 hover:shadow-[0_12px_24px_rgba(26,26,26,0.1),0_4px_12px_rgba(59,73,234,0.16),inset_0_1px_0_rgba(255,255,255,0.22)] active:scale-[0.97]"
             >
               <ArrowUpIcon className="size-4" />
             </Button>

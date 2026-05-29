@@ -194,7 +194,7 @@ function Bubble({
                   type="button"
                   onClick={save}
                   disabled={!draft.trim()}
-                  className="inline-flex h-6 items-center gap-1 rounded-xs border border-brand/10 bg-white px-2 text-xs font-medium text-brand shadow-[0_2px_8px_rgba(59,73,234,0.08)] transition-colors hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex h-6 items-center gap-1 rounded-xs border border-brand/10 bg-white px-2 text-xs font-medium text-brand shadow-active-soft transition-colors hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:pointer-events-none disabled:opacity-50"
                 >
                   <CheckIcon className="size-3" />
                   Save
@@ -230,7 +230,7 @@ function Bubble({
                   from={from}
                   className={cn(
                     "block min-w-0 max-w-full",
-                    !isUser && "shadow-[0_2px_6px_rgba(0,0,0,0.02)]"
+                    !isUser && "shadow-[0_8px_22px_rgba(26,26,26,0.035),0_1px_5px_rgba(26,26,26,0.025)]"
                   )}
                 >
                   <span className="block min-w-0 whitespace-pre-wrap break-words leading-relaxed">

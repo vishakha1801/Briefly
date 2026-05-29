@@ -250,7 +250,7 @@ export function CallRecap({
                 <DropdownMenuPrimitive.Content
                   align="end"
                   sideOffset={5}
-                  className="z-50 min-w-[190px] overflow-hidden rounded-md border border-brand/10 bg-white/95 p-1 shadow-[0_8px_24px_rgba(16,20,63,0.12)] backdrop-blur-sm"
+                  className="z-50 min-w-[190px] overflow-hidden rounded-md border border-brand/10 bg-white/95 p-1 shadow-floating-soft backdrop-blur-sm"
                 >
                   <DropdownMenuPrimitive.Item
                     onSelect={startDictating}

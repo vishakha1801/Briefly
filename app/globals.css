@@ -116,6 +116,32 @@
   --orb-4: oklch(0.72 0.12 190); /* soft seafoam-cyan */
 
   --grain-noise-svg: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='brieflyNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0.28'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23brieflyNoise)'/%3E%3C/svg%3E");
+
+  --shadow-surface:
+    0 18px 45px rgba(26, 26, 26, 0.08),
+    0 2px 8px rgba(26, 26, 26, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  --shadow-card:
+    0 12px 30px rgba(26, 26, 26, 0.055),
+    0 2px 8px rgba(26, 26, 26, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  --shadow-card-hover:
+    0 16px 38px rgba(26, 26, 26, 0.075),
+    0 4px 12px rgba(26, 26, 26, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-floating:
+    0 24px 60px rgba(26, 26, 26, 0.12),
+    0 6px 18px rgba(26, 26, 26, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
+  --shadow-command:
+    0 -18px 48px rgba(26, 26, 26, 0.065),
+    0 -6px 18px rgba(59, 73, 234, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 0 28px rgba(174, 183, 255, 0.06);
+  --shadow-active-control:
+    0 8px 18px rgba(26, 26, 26, 0.07),
+    0 1px 4px rgba(26, 26, 26, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 @layer base {
@@ -167,7 +193,7 @@
     z-index: 0;
     background-image: var(--grain-noise-svg);
     background-size: 220px 220px;
-    opacity: 0.035;
+    opacity: 0.03;
     mix-blend-mode: multiply;
   }
   :where(.grain-bg > *) {
@@ -193,7 +219,7 @@
     pointer-events: none;
     background-image: var(--grain-noise-svg);
     background-size: 180px 180px;
-    opacity: var(--grain-opacity, 0.045);
+    opacity: var(--grain-opacity, 0.038);
     mix-blend-mode: overlay;
   }
   :where(.grain-overlay > *, .glass-grain > *, .gradient-grain > *) {
@@ -235,7 +261,7 @@
     backdrop-filter: blur(24px) saturate(1.1);
     -webkit-backdrop-filter: blur(24px) saturate(1.1);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.08);
-    box-shadow: 0 8px 32px 0 oklch(0.564 0.283 273.6 / 0.02);
+    box-shadow: var(--shadow-surface);
   }
 
   .glass-card {
@@ -243,13 +269,13 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.06);
-    box-shadow: 0 4px 20px 0 oklch(0.564 0.283 273.6 / 0.02);
+    box-shadow: var(--shadow-card);
     transition: background-color 160ms var(--ease-out-custom), border-color 160ms var(--ease-out-custom), box-shadow 160ms var(--ease-out-custom), transform 160ms var(--ease-out-custom);
   }
   .glass-card:hover {
     background: oklch(1 0 0 / 0.45);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.12);
-    box-shadow: 0 6px 24px 0 oklch(0.564 0.283 273.6 / 0.04);
+    box-shadow: var(--shadow-card-hover);
   }
 
   .glass-chip {
@@ -301,14 +327,7 @@
     border-left: none;
     border-right: none;
     border-bottom: none;
-    box-shadow:
-      /* upward ambient glow from the command bar */
-      0 -12px 40px rgba(59, 73, 234, 0.07),
-      0 -4px 16px rgba(174, 183, 255, 0.12),
-      /* inner highlight line at the very top */
-      inset 0 1px 0 rgba(255, 255, 255, 0.60),
-      /* faint inner tint bloom */
-      inset 0 0 28px rgba(174, 183, 255, 0.06);
+    box-shadow: var(--shadow-command);
   }
 
   .glass-elevated {
@@ -316,7 +335,7 @@
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.18);
-    box-shadow: 0 20px 50px 0 oklch(0.2 0.12 273.6 / 0.12);
+    box-shadow: var(--shadow-floating);
   }
 
   /* Support legacy class hooks mapping to new system */
@@ -332,7 +351,7 @@
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
     border: 1px solid oklch(0.564 0.283 273.6 / 0.18);
-    box-shadow: 0 20px 50px 0 oklch(0.2 0.12 273.6 / 0.12);
+    box-shadow: var(--shadow-floating);
   }
 
   /* Grainy glass: every glass surface gets a fine noise layer baked in. */
@@ -383,8 +402,21 @@
     pointer-events: none;
     background-image: var(--grain-noise-svg);
     background-size: 180px 180px;
-    opacity: 0.045;
+    opacity: 0.038;
     mix-blend-mode: overlay;
+  }
+
+  .shadow-surface {
+    box-shadow: var(--shadow-surface);
+  }
+  .shadow-card-soft {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-floating-soft {
+    box-shadow: var(--shadow-floating);
+  }
+  .shadow-active-soft {
+    box-shadow: var(--shadow-active-control);
   }
   /* Keep real content above the grain layer. :where() gives (0,0,0) specificity so
      Tailwind's absolute/fixed utilities on children always win. */

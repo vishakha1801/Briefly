@@ -312,7 +312,7 @@ export default function VoiceHome() {
 
           {/* ── Right sidebar (desktop only) ───────────────────── */}
           {isDesktop && (
-            <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-brand/8 bg-white/20 px-4 py-4 backdrop-blur-xl xl:w-[400px]">
+            <aside className="flex h-full w-[360px] shrink-0 flex-col border-l border-brand/8 bg-white/20 px-4 py-4 shadow-[inset_1px_0_0_rgba(255,255,255,0.46),-18px_0_44px_rgba(26,26,26,0.035)] backdrop-blur-xl xl:w-[400px]">
               <div className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Context &amp; Actions
               </div>

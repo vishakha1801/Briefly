@@ -92,6 +92,10 @@ function textFromResponseDone(response: unknown): string {
   return parts.join(" ").trim();
 }
 
+function isActiveResponseError(message: string): boolean {
+  return /active response in progress/i.test(message);
+}
+
 const TOOLS = [
   {
     type: "function",
@@ -220,6 +224,7 @@ export class RealtimeSession {
   private currentResponseTextSent = false;
   private remoteAudioProgressed = false;
   private responseInProgress = false;
+  private responseCreateRequested = false;
   private pendingResponseCreate = false;
   private audioDoneTimer: number | null = null;
 
@@ -388,17 +393,23 @@ export class RealtimeSession {
   }
 
   private send(obj: unknown) {
-    if (this.dc?.readyState === "open") this.dc.send(JSON.stringify(obj));
+    if (this.dc?.readyState !== "open") return false;
+    this.dc.send(JSON.stringify(obj));
+    return true;
   }
 
   private requestResponse({ interruptActive = false } = {}) {
-    if (this.responseInProgress) {
+    if (this.responseInProgress || this.responseCreateRequested) {
       this.pendingResponseCreate = true;
       if (interruptActive) this.cancelActiveResponse({ clearPending: false });
       return;
     }
 
-    this.send({ type: "response.create", response: RESPONSE_OPTS });
+    if (this.send({ type: "response.create", response: RESPONSE_OPTS })) {
+      // response.created is asynchronous. Treat the response as active
+      // immediately so rapid text/tool paths cannot send a second create.
+      this.responseCreateRequested = true;
+    }
   }
 
   private cancelActiveResponse({ clearPending = true } = {}) {
@@ -415,6 +426,7 @@ export class RealtimeSession {
 
   private flushPendingResponse() {
     this.responseInProgress = false;
+    this.responseCreateRequested = false;
     if (!this.pendingResponseCreate) return false;
     this.pendingResponseCreate = false;
     this.requestResponse();
@@ -518,6 +530,7 @@ export class RealtimeSession {
         break;
       case "response.created":
         this.responseInProgress = true;
+        this.responseCreateRequested = false;
         this.currentResponseHasAudio = false;
         this.currentResponseTextSent = false;
         this.remoteAudioProgressed = false;
@@ -585,8 +598,14 @@ export class RealtimeSession {
       case "error": {
         const msg =
           evt.error?.message || evt.error?.code || "Realtime error";
+        if (isActiveResponseError(msg)) {
+          this.responseInProgress = true;
+          this.responseCreateRequested = false;
+          break;
+        }
         this.cb.onServerError?.(msg);
         this.responseInProgress = false;
+        this.responseCreateRequested = false;
         this.pendingResponseCreate = false;
         this.cb.onActivity?.("idle");
         break;
@@ -641,6 +660,7 @@ export class RealtimeSession {
     this.realtimeAudioPlayable = false;
     this.remoteAudioProgressed = false;
     this.responseInProgress = false;
+    this.responseCreateRequested = false;
     this.pendingResponseCreate = false;
     this.cb.onLevel?.(0);
     this.cb.onStatus?.("closed");

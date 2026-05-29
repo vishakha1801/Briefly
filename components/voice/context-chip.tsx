@@ -120,7 +120,7 @@ export function ContextChip() {
 
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent
-          className="glass-panel !max-w-none flex h-[min(54vh,410px)] w-[min(770px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-lg p-0 shadow-[0_20px_60px_rgba(16,20,63,0.14)] ![background:oklch(1_0_0/0.88)]"
+          className="glass-panel !max-w-none flex h-[min(54vh,410px)] w-[min(770px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-lg p-0 ![background:oklch(1_0_0/0.88)]"
           showCloseButton={false}
         >
           <DialogHeader className="flex flex-row items-center justify-between border-b border-brand/8 bg-white/30 px-4 py-3">
@@ -266,7 +266,7 @@ export function ContextChip() {
                   <SelectTrigger id="cc-stage" className="h-9 rounded-sm border-brand/10 bg-white/45 text-sm focus-visible:border-brand/25 focus-visible:ring-brand/10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-sm border-brand/10 bg-white/95 shadow-[0_14px_38px_rgba(16,20,63,0.16)] backdrop-blur-xl ![background:oklch(1_0_0/0.96)]">
+                  <SelectContent className="rounded-sm border-brand/10 bg-white/95 backdrop-blur-xl ![background:oklch(1_0_0/0.96)]">
                     {STAGES.map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
@@ -300,7 +300,7 @@ export function ContextChip() {
                   type="submit"
                   size="sm"
                   disabled={createCustomer.isPending || !form.name.trim() || !form.company.trim()}
-                  className={cn("rounded-sm bg-brand shadow-[0_2px_10px_rgba(59,73,234,0.15)] hover:bg-brand/90", createCustomer.isPending && "opacity-70")}
+                  className={cn("rounded-sm bg-brand shadow-[0_8px_18px_rgba(26,26,26,0.08),0_2px_8px_rgba(59,73,234,0.12),inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-brand/90", createCustomer.isPending && "opacity-70")}
                 >
                   {createCustomer.isPending ? "Creating…" : "Create customer"}
                 </Button>

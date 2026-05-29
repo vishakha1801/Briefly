@@ -57,7 +57,7 @@ export function ContextPrompts({
         <TooltipContent
           side="top"
           sideOffset={7}
-          className="rounded-md border-brand/12 bg-white/96 px-3 py-2 text-[11px] font-medium text-foreground shadow-[0_10px_28px_rgba(16,20,63,0.14)] ring-1 ring-brand/5 backdrop-blur-xl ![background:oklch(1_0_0/0.96)]"
+          className="rounded-md border-brand/12 bg-white/96 px-3 py-2 text-[11px] font-medium text-foreground shadow-floating-soft ring-1 ring-brand/5 backdrop-blur-xl ![background:oklch(1_0_0/0.96)]"
         >
           Or say &quot;get talking points&quot;
         </TooltipContent>
